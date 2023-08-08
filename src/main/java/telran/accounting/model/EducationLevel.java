@@ -1,0 +1,16 @@
+package telran.accounting.model;
+
+public enum EducationLevel {
+    PRESCHOOL,
+    PRIMARY,
+    SECONDARY,
+    HIGH_SCHOOL,
+    ASSOCIATE_DEGREE,
+    BACHELOR_DEGREE,
+    MASTER_DEGREE,
+    DOCTORATE_DEGREE,
+    PROFESSIONAL_DEGREE,
+    POSTDOCTORAL_FELLOWSHIP,
+    HONORARY_DEGREE,
+    OTHER
+}

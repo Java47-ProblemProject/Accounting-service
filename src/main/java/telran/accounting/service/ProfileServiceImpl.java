@@ -2,77 +2,144 @@ package telran.accounting.service;
 
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import telran.accounting.dao.ProfileRepository;
-import telran.accounting.dto.LocationDto;
-import telran.accounting.dto.ProfileDto;
-import telran.accounting.dto.RegisterProfileDto;
-import telran.accounting.model.Profile;
+import telran.accounting.dto.*;
+import telran.accounting.model.*;
 import telran.accounting.model.exceptions.ProfileExistsException;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class ProfileServiceImpl implements ProfileService {
+public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
 
     final ProfileRepository profileRepository;
     final ModelMapper modelMapper;
     final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public ProfileDto addProfile(RegisterProfileDto newProfile) {
         if (profileRepository.existsById(newProfile.getEmail())) {
             throw new ProfileExistsException();
         }
         Profile profile = modelMapper.map(newProfile, Profile.class);
-        System.out.println(profile);
+        if (profile.getEducationLevel() == null){
+            profile.setEducationLevel(EducationLevel.OTHER);
+        }
         String hashedPassword = passwordEncoder.encode(profile.getPassword());
         profile.setPassword(hashedPassword);
-        profile.editStats(profile.getEducationLevel());
-        profile.editRole("USER");
+        profile.editStats(String.valueOf(profile.getEducationLevel()));
+        profile.editRole(Roles.USER);
         profileRepository.save(profile);
         return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
-    public RegisterProfileDto getProfile(String profileId) {
-        return null;
+    @Transactional(readOnly = true)
+    public ProfileDto getProfile(String profileId) {
+        Profile profile = findProfileOrThrowError(profileId);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
-    public RegisterProfileDto editName(String profileId, String newName) {
-        return null;
+    @Transactional
+    public ProfileDto editName(String profileId, NameDto newName) {
+        Profile profile = findProfileOrThrowError(profileId);
+        profile.setUsername(newName.getUsername());
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
-    public RegisterProfileDto editEducation(String profileId, String newEducation) {
-        return null;
+    @Transactional
+    public ProfileDto editEducation(String profileId, String newEducation) {
+        Profile profile = findProfileOrThrowError(profileId);
+        if (Arrays.stream(EducationLevel.values()).noneMatch(e-> e.toString().equalsIgnoreCase(newEducation))){
+            profile.setEducationLevel(EducationLevel.OTHER);
+        }else {
+            profile.setEducationLevel(EducationLevel.valueOf(newEducation.toUpperCase()));
+        }
+        profile.editStats(newEducation);
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
-    public RegisterProfileDto editInterests(String profileId, Set<String> newInterests) {
-        return null;
+    @Transactional
+    public ProfileDto editCommunities(String profileId, CommunitiesDto newCommunities) {
+        Profile profile = findProfileOrThrowError(profileId);
+        profile.editCommunities(newCommunities.getCommunities());
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
-    public RegisterProfileDto editLocation(String profileId, LocationDto newLocation) {
-        return null;
+    @Transactional
+    public ProfileDto editLocation(String profileId, LocationDto newLocation) {
+        Profile profile = findProfileOrThrowError(profileId);
+        profile.setLocation(modelMapper.map(newLocation, Location.class));
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
-    public RegisterProfileDto editAvatar(String profileId, String newAvatar) {
-        return null;
+    @Transactional
+    public ProfileDto editAvatar(String profileId, String newAvatar) {
+        Profile profile = findProfileOrThrowError(profileId);
+        profile.setAvatar(newAvatar);
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
+    @Transactional
     public Boolean editPassword(String profileId, String newPassword) {
-        return null;
+        try {
+            Profile profile = findProfileOrThrowError(profileId);
+            String hashedPassword = passwordEncoder.encode(newPassword);
+            profile.setPassword(hashedPassword);
+            return true;
+        } catch (NoSuchElementException e) {
+            return false;
+        }
     }
 
     @Override
-    public RegisterProfileDto deleteUser(String profileId) {
-        return null;
+    @Transactional
+    public ProfileDto deleteUser(String profileId) {
+        Profile profile = findProfileOrThrowError(profileId);
+        profileRepository.deleteById(profileId);
+        return modelMapper.map(profile, ProfileDto.class);
+    }
+
+    @Override
+    @Transactional
+    public ProfileDto editRole(String profileId, Roles role) {
+        Profile profile = findProfileOrThrowError(profileId);
+        profile.editRole(role);
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
+    }
+
+    private Profile findProfileOrThrowError(String profileId) {
+        return profileRepository.findById(profileId).orElseThrow(NoSuchElementException::new);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        if (!profileRepository.existsByRolesContaining("ADMINISTRATOR")) {
+            String password = BCrypt.hashpw("admin", BCrypt.gensalt());
+            Profile adminProfile = new Profile("admin", "email", EducationLevel.OTHER, new HashSet<String>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
+            profileRepository.save(adminProfile);
+        }
     }
 }

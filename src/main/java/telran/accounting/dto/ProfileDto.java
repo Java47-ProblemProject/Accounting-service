@@ -9,7 +9,7 @@ public class ProfileDto {
     protected String username;
     protected String email;
     protected String educationLevel;
-    protected Set<String> scientificInterests;
+    protected Set<String> communities;
     protected LocationDto location;
     protected String password;
     protected Set<String> roles;
