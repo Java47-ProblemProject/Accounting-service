@@ -3,7 +3,6 @@ package telran.accounting.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import telran.accounting.dto.*;
-import telran.accounting.model.EducationLevel;
 import telran.accounting.model.Roles;
 import telran.accounting.service.ProfileService;
 

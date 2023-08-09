@@ -14,6 +14,7 @@ public class Profile {
     @Setter
     protected String username;
     @Id
+    @Setter
     protected String email;
     @Setter
     protected EducationLevel educationLevel;
@@ -53,6 +54,10 @@ public class Profile {
 
     public void editStats(String educationLevel) {
         this.stats.setRating(calculateRating(EducationLevel.valueOf(educationLevel)));
+    }
+
+    public void addActivities(String problemId, Boolean liked, Boolean disliked){
+        this.activities.add(new Activity(problemId, liked, disliked));
     }
 
     private int calculateRating(EducationLevel educationLevel) {

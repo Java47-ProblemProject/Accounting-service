@@ -24,6 +24,4 @@ public class ServiceConfiguration {
     public PasswordEncoder getPassword() {
         return new BCryptPasswordEncoder();
     }
-
-
 }

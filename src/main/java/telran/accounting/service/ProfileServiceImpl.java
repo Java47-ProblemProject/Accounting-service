@@ -7,15 +7,13 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import telran.accounting.configuration.EmailEncryptionUtils;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.model.*;
 import telran.accounting.model.exceptions.ProfileExistsException;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -28,15 +26,22 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Override
     @Transactional
     public ProfileDto addProfile(RegisterProfileDto newProfile) {
-        if (profileRepository.existsById(newProfile.getEmail())) {
+        String encryptedEmail;
+        try {
+            encryptedEmail = EmailEncryptionUtils.encryptEmail(newProfile.getEmail());
+        } catch (Exception e) {
+            throw new RuntimeException();
+        }
+        if (profileRepository.existsById(encryptedEmail)) {
             throw new ProfileExistsException();
         }
         Profile profile = modelMapper.map(newProfile, Profile.class);
-        if (profile.getEducationLevel() == null){
+        if (profile.getEducationLevel() == null) {
             profile.setEducationLevel(EducationLevel.OTHER);
         }
         String hashedPassword = passwordEncoder.encode(profile.getPassword());
         profile.setPassword(hashedPassword);
+        profile.setEmail(encryptedEmail);
         profile.editStats(String.valueOf(profile.getEducationLevel()));
         profile.editRole(Roles.USER);
         profileRepository.save(profile);
@@ -63,9 +68,9 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional
     public ProfileDto editEducation(String profileId, String newEducation) {
         Profile profile = findProfileOrThrowError(profileId);
-        if (Arrays.stream(EducationLevel.values()).noneMatch(e-> e.toString().equalsIgnoreCase(newEducation))){
+        if (Arrays.stream(EducationLevel.values()).noneMatch(e -> e.toString().equalsIgnoreCase(newEducation))) {
             profile.setEducationLevel(EducationLevel.OTHER);
-        }else {
+        } else {
             profile.setEducationLevel(EducationLevel.valueOf(newEducation.toUpperCase()));
         }
         profile.editStats(newEducation);
@@ -138,7 +143,8 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     public void run(String... args) throws Exception {
         if (!profileRepository.existsByRolesContaining("ADMINISTRATOR")) {
             String password = BCrypt.hashpw("admin", BCrypt.gensalt());
-            Profile adminProfile = new Profile("admin", "email", EducationLevel.OTHER, new HashSet<String>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
+            String email = EmailEncryptionUtils.encryptEmail("adminemail@mail.com");
+            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<String>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
             profileRepository.save(adminProfile);
         }
     }
