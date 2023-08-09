@@ -19,7 +19,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @SneakyThrows
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        String encryptedEmail = EmailEncryptionUtils.encryptEmail(email);
+        String encryptedEmail = EmailEncryptionUtils.encryptAndEncodeUserId(email);
         Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(()-> new UsernameNotFoundException(email));
         String[] roles = profile.getRoles()
                 .stream()

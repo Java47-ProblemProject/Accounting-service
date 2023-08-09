@@ -28,7 +28,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     public ProfileDto addProfile(RegisterProfileDto newProfile) {
         String encryptedEmail;
         try {
-            encryptedEmail = EmailEncryptionUtils.encryptEmail(newProfile.getEmail());
+            encryptedEmail = EmailEncryptionUtils.encryptAndEncodeUserId(newProfile.getEmail());
         } catch (Exception e) {
             throw new RuntimeException();
         }
@@ -143,7 +143,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     public void run(String... args) throws Exception {
         if (!profileRepository.existsByRolesContaining("ADMINISTRATOR")) {
             String password = BCrypt.hashpw("admin", BCrypt.gensalt());
-            String email = EmailEncryptionUtils.encryptEmail("adminemail@mail.com");
+            String email = EmailEncryptionUtils.encryptAndEncodeUserId("adminemail@mail.com");
             Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<String>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
             profileRepository.save(adminProfile);
         }
