@@ -43,7 +43,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         profile.setPassword(hashedPassword);
         profile.setEmail(encryptedEmail);
         profile.editStats(String.valueOf(profile.getEducationLevel()));
-        profile.editRole(Roles.USER);
+        profile.setRoles(Set.of(Roles.USER));
         profileRepository.save(profile);
         return modelMapper.map(profile, ProfileDto.class);
     }
@@ -112,6 +112,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
             Profile profile = findProfileOrThrowError(profileId);
             String hashedPassword = passwordEncoder.encode(newPassword);
             profile.setPassword(hashedPassword);
+            profileRepository.save(profile);
             return true;
         } catch (NoSuchElementException e) {
             return false;
@@ -126,13 +127,38 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    //Administrative methods//
     @Override
     @Transactional
-    public ProfileDto editRole(String profileId, Roles role) {
-        Profile profile = findProfileOrThrowError(profileId);
-        profile.editRole(role);
-        profileRepository.save(profile);
+    public ProfileDto editRole(String profileId,String targetId, RoleDto role) {
+        Profile adminProfile = findProfileOrThrowError(profileId);
+        Profile profile = findProfileOrThrowError(targetId);
+        if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
+            profile.setRoles(Roles.convertFromDto(role.getRoles()));
+            profileRepository.save(profile);
+        }
         return modelMapper.map(profile, ProfileDto.class);
+    }
+
+    @Override
+    public ProfileDto deleteUser(String profileId, String targetId) {
+        Profile adminProfile = findProfileOrThrowError(profileId);
+        Profile targetProfile = findProfileOrThrowError(targetId);
+        if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
+            profileRepository.deleteById(targetId);
+        }
+        return modelMapper.map(targetProfile, ProfileDto.class);
+    }
+
+    @Override
+    public ProfileDto deleteAvatar(String profileId, String targetId) {
+        Profile adminProfile = findProfileOrThrowError(profileId);
+        Profile targetProfile = findProfileOrThrowError(targetId);
+        if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
+            targetProfile.setAvatar("");
+            profileRepository.save(targetProfile);
+        }
+        return modelMapper.map(targetProfile, ProfileDto.class);
     }
 
     private Profile findProfileOrThrowError(String profileId) {
@@ -141,7 +167,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        if (!profileRepository.existsByRolesContaining("ADMINISTRATOR")) {
+        if (!profileRepository.existsByRolesContaining(Roles.ADMINISTRATOR.name())) {
             String password = BCrypt.hashpw("admin", BCrypt.gensalt());
             String email = EmailEncryptionUtils.encryptAndEncodeUserId("adminemail@mail.com");
             Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<String>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);

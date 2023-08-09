@@ -7,6 +7,7 @@ import telran.accounting.model.Roles;
 import telran.accounting.service.ProfileService;
 
 import java.security.Principal;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/user")
@@ -64,8 +65,18 @@ public class ProfileController {
         return profileService.deleteUser(profileId);
     }
 
-    @PutMapping("/editrole/{profileId}/{roles}")
-    public ProfileDto editRole(@PathVariable String profileId, @PathVariable String roles) {
-        return profileService.editRole(profileId, Roles.valueOf(roles.toUpperCase()));
+    @PutMapping("/editrole/{profileId}/{targetId}")
+    public ProfileDto editRole(@PathVariable String profileId, @PathVariable String targetId, @RequestBody RoleDto roles) {
+        return profileService.editRole(profileId,targetId, roles);
+    }
+
+    @DeleteMapping("/delete/{profileId}/{targetId}")
+    public ProfileDto deleteUser(@PathVariable String profileId, @PathVariable String targetId) {
+        return profileService.deleteUser(profileId, targetId);
+    }
+
+    @DeleteMapping("/deleteavatar/{profileId}/{targetId}")
+    public ProfileDto deleteAvatar(@PathVariable String profileId, @PathVariable String targetId) {
+        return profileService.deleteAvatar(profileId, targetId);
     }
 }

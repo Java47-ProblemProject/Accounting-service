@@ -4,6 +4,8 @@ import telran.accounting.dto.*;
 import telran.accounting.model.EducationLevel;
 import telran.accounting.model.Roles;
 
+import java.util.Set;
+
 public interface ProfileService {
     ProfileDto addProfile(RegisterProfileDto newProfile);
 
@@ -23,5 +25,9 @@ public interface ProfileService {
 
     ProfileDto deleteUser(String profileId);
 
-    ProfileDto editRole(String profileId, Roles roles);
+    //Administrative methods//
+    ProfileDto editRole(String profileId,String targetId, RoleDto roles);
+    ProfileDto deleteUser(String profileId, String targetId);
+    ProfileDto deleteAvatar(String profileId, String targetId);
+
 }

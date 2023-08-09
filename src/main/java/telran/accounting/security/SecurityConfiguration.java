@@ -16,7 +16,6 @@ public class SecurityConfiguration {
         http.authorizeRequests(authorize -> authorize
                 .requestMatchers("/user/registration")
                     .permitAll()
-
                                         //User section//
                 .requestMatchers(HttpMethod.PUT, "/user/editname/{userId}")
                     .access("#userId == authentication.name")
@@ -34,11 +33,11 @@ public class SecurityConfiguration {
                     .access("#userId == authentication.name")
 
                                     //Administrative section//
-                .requestMatchers(HttpMethod.PUT, "/user/editrole/{user}/**")
+                .requestMatchers(HttpMethod.PUT, "/user/editrole/{userId}/*")
                     .access("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name")
-                .requestMatchers(HttpMethod.DELETE, "/user/deleteuser/{user}/**")
+                .requestMatchers(HttpMethod.DELETE, "/user/deleteuser/{userId}/*")
                     .access("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name")
-                .requestMatchers(HttpMethod.DELETE, "/user/deleteavatar/{user}/**")
+                .requestMatchers(HttpMethod.DELETE, "/user/deleteavatar/{userId}/*")
                     .access("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name")
                 .anyRequest()
                     .authenticated()
