@@ -22,6 +22,7 @@ public interface ProfileService {
     ProfileDto editAvatar(String profileId, String newAvatar);
 
     Boolean editPassword(String profileId, String newPassword);
+    Boolean resetPassword(String emailAddress);
 
     ProfileDto deleteUser(String profileId);
 

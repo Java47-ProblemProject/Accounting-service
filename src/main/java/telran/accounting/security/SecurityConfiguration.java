@@ -14,7 +14,7 @@ public class SecurityConfiguration {
         http.httpBasic(Customizer.withDefaults());
         http.csrf().disable();
         http.authorizeRequests(authorize -> authorize
-                .requestMatchers("/user/registration")
+                .requestMatchers("/user/registration", "/user/resetpassword/*")
                     .permitAll()
                                         //User section//
                 .requestMatchers(HttpMethod.PUT, "/user/editname/{userId}")

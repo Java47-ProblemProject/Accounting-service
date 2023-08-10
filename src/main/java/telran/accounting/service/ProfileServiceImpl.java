@@ -3,7 +3,10 @@ package telran.accounting.service;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     final ProfileRepository profileRepository;
     final ModelMapper modelMapper;
     final PasswordEncoder passwordEncoder;
+    final JavaMailSender javaMailSender;
 
     @Override
     @Transactional
@@ -51,6 +55,12 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Override
     @Transactional(readOnly = true)
     public ProfileDto getProfile(String profileId) {
+        //How to get authentication information about logged user.
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication != null) {
+//            String currentUsername = authentication.getName();
+//            System.out.println("Request from user: " + currentUsername);
+//        }
         Profile profile = findProfileOrThrowError(profileId);
         return modelMapper.map(profile, ProfileDto.class);
     }
@@ -120,6 +130,30 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     }
 
     @Override
+    public Boolean resetPassword(String emailAddress) {
+        String encryptedEmail;
+        try {
+            encryptedEmail = EmailEncryptionUtils.encryptAndEncodeUserId(emailAddress);
+        }catch (Exception e){
+            throw new RuntimeException();
+        }
+        Profile profile = findProfileOrThrowError(encryptedEmail);
+        String newPassword = new Base64StringKeyGenerator().generateKey();
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(emailAddress);
+        message.setSubject("JAN new password");
+        message.setText("Your new password is: \n" + newPassword + "\n\nPlease remember to change it once you log in for the first time.");
+        javaMailSender.send(message);
+
+
+        newPassword = passwordEncoder.encode(newPassword);
+        profile.setPassword(newPassword);
+        profileRepository.save(profile);
+        return true;
+    }
+
+    @Override
     @Transactional
     public ProfileDto deleteUser(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
@@ -170,7 +204,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         if (!profileRepository.existsByRolesContaining(Roles.ADMINISTRATOR.name())) {
             String password = BCrypt.hashpw("admin", BCrypt.gensalt());
             String email = EmailEncryptionUtils.encryptAndEncodeUserId("adminemail@mail.com");
-            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<String>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
+            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
             profileRepository.save(adminProfile);
         }
     }
