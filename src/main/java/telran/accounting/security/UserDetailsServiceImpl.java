@@ -8,7 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import telran.accounting.configuration.EmailEncryptionUtils;
+import telran.accounting.configuration.EmailEncryptionConfiguration;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.model.Profile;
 
@@ -19,7 +19,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @SneakyThrows
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        String encryptedEmail = EmailEncryptionUtils.encryptAndEncodeUserId(email);
+        String encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(email);
         Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(()-> new UsernameNotFoundException(email));
         String[] roles = profile.getRoles()
                 .stream()

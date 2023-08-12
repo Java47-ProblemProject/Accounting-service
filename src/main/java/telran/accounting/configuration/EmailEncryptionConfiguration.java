@@ -5,24 +5,20 @@ import org.apache.tomcat.util.codec.binary.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import java.net.URLEncoder;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
-public class EmailEncryptionUtils {
+public class EmailEncryptionConfiguration {
     private static final String ALGORITHM = "AES";
     private static final String KEY = "KEY_EMAIL_123456";
 
     public static String encryptAndEncodeUserId(String email) throws Exception {
         String encryptedEmail = encrypt(email);
-        String encodedEmail = org.apache.tomcat.util.codec.binary.Base64.encodeBase64URLSafeString(encryptedEmail.getBytes());
-        return encodedEmail;
+        return Base64.encodeBase64URLSafeString(encryptedEmail.getBytes());
     }
 
     public static String decryptAndDecodeUserId(String encodedAndEncryptedEmail) throws Exception {
         byte[] encryptedBytes = Base64.decodeBase64(encodedAndEncryptedEmail);
-        String decryptedEmail = decrypt(new String(encryptedBytes));
-        return decryptedEmail;
+        return decrypt(new String(encryptedBytes));
     }
 
     private static String encrypt(String data) throws Exception {
