@@ -1,6 +1,5 @@
 package telran.accounting.configuration;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 import lombok.Setter;
@@ -18,11 +17,11 @@ public class KafkaProducer {
     private String message;
 
     @Bean
-    public Supplier<String> send() {
+    public Supplier<String> sendAuthenticatedProfile() {
         return () -> {
             if (message != null) {
-                System.out.println(message);
-                streamBridge.send("send-out-0", message);
+                //System.out.println(message);
+                streamBridge.send("sendAuthenticatedProfile-out-0", message);
                 String sentMessage = message;
                 message = null;
                 return sentMessage;

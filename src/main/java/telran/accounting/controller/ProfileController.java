@@ -20,7 +20,7 @@ public class ProfileController {
 
     @PostMapping("/login")
     public ProfileDto login(Principal principal) {
-        return profileService.getProfile(principal.getName());
+        return profileService.logInProfile(principal.getName());
     }
 
     @GetMapping("/getuser/{profileId}")

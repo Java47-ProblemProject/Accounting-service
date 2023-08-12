@@ -3,10 +3,8 @@ package telran.accounting.service;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
@@ -21,7 +19,6 @@ import telran.accounting.model.*;
 import telran.accounting.model.exceptions.ProfileExistsException;
 
 import java.util.*;
-import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
@@ -61,21 +58,21 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
 
     @Override
     @Transactional(readOnly = true)
-    public ProfileDto getProfile(String profileId) {
-        //How to get authentication information about logged user.
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null) {
-            String currentUsername = authentication.getName();
-            Profile profile = findProfileOrThrowError(profileId);
-            System.out.println("Request from repository: " + profile.getEmail());
-            System.out.println("Request from user: " + currentUsername);
-
-            kafkaProducer.setMessage(currentUsername);
-            kafkaProducer.send().get();
-
-
-
+    public ProfileDto logInProfile(String profileId) {
+        Profile profile = findProfileOrThrowError(profileId);
+        String profileAuthenticated = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (profileAuthenticated != null && profileAuthenticated.equals(profile.getEmail())) {
+            ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
+            //This block of code for send Authenticated Profile to receivers ->
+//            kafkaProducer.setMessage(profileDto.getEmail());
+//            kafkaProducer.sendAuthenticatedProfile().get();
         }
+        return modelMapper.map(profile, ProfileDto.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProfileDto getProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
         return modelMapper.map(profile, ProfileDto.class);
     }
@@ -149,7 +146,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         String encryptedEmail;
         try {
             encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(emailAddress);
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new RuntimeException();
         }
         Profile profile = findProfileOrThrowError(encryptedEmail);
@@ -178,7 +175,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     //Administrative methods//
     @Override
     @Transactional
-    public ProfileDto editRole(String profileId,String targetId, RoleDto role) {
+    public ProfileDto editRole(String profileId, String targetId, RoleDto role) {
         Profile adminProfile = findProfileOrThrowError(profileId);
         Profile profile = findProfileOrThrowError(targetId);
         if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {

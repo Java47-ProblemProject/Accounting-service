@@ -9,7 +9,9 @@ import java.util.Set;
 public interface ProfileService {
     ProfileDto addProfile(RegisterProfileDto newProfile);
 
-    ProfileDto getProfile(String profileId); //The following method works with login(Principal.getStringId) and getProfile(StringId) methods.
+    ProfileDto logInProfile(String profileId);
+
+    ProfileDto getProfile(String profileId);
 
     ProfileDto editName(String profileId, NameDto newName);
 
