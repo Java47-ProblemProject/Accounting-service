@@ -64,8 +64,8 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         if (profileAuthenticated != null && profileAuthenticated.equals(profile.getEmail())) {
             ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
             //This block of code for send Authenticated Profile to receivers ->
-//            kafkaProducer.setMessage(profileDto.getEmail());
-//            kafkaProducer.sendAuthenticatedProfile().get();
+            kafkaProducer.setMessage(profileDto.getEmail());
+            kafkaProducer.sendAuthenticatedProfile().get();
         }
         return modelMapper.map(profile, ProfileDto.class);
     }
