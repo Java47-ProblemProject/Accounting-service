@@ -6,6 +6,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 
 @Configuration
 public class SecurityConfiguration {
@@ -13,34 +14,34 @@ public class SecurityConfiguration {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.httpBasic(Customizer.withDefaults());
         http.csrf().disable();
-        http.authorizeRequests(authorize -> authorize
+        http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/user/registration", "/user/resetpassword/*")
-                    .permitAll()
-                                        //User section//
+                .permitAll()
+                //User section//
                 .requestMatchers(HttpMethod.PUT, "/user/editname/{userId}")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editeducation/{userId}/**")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editscientificinterests/{userId}")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editlocation/{userId}")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editavatar/{userId}/**")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editpassword/{userId}")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.DELETE, "/user/delete/{userId}")
-                    .access("#userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
 
-                                    //Administrative section//
+                //Administrative section//
                 .requestMatchers(HttpMethod.PUT, "/user/editrole/{userId}/*")
-                    .access("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
                 .requestMatchers(HttpMethod.DELETE, "/user/deleteuser/{userId}/*")
-                    .access("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
                 .requestMatchers(HttpMethod.DELETE, "/user/deleteavatar/{userId}/*")
-                    .access("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name")
+                .access(new WebExpressionAuthorizationManager("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
                 .anyRequest()
-                    .authenticated()
+                .authenticated()
         );
         return http.build();
     }
