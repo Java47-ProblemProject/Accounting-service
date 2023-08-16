@@ -4,7 +4,9 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 @Document(collection = "Profiles")
@@ -34,14 +36,14 @@ public class Profile {
     @Setter
     protected Stats stats;
     @Setter
-    protected Set<Activity> activities;
+    protected Map<String, Activity> activities;
     @Setter
     protected Double wallet;
 
     public Profile() {
         this.roles = new HashSet<>();
         this.communities = new HashSet<>();
-        this.activities = new HashSet<>();
+        this.activities = new HashMap<>();
         this.avatar = "";
         this.stats = new Stats(0, 0, 0, 0);
         this.wallet = 0.;

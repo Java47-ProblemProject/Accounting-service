@@ -3,6 +3,7 @@ package telran.accounting.dto;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.util.Map;
 import java.util.Set;
 
 @Getter
@@ -17,6 +18,6 @@ public class ProfileDto {
     protected Set<String> roles;
     protected String avatar;
     protected StatsDto stats;
-    protected Set<ActivityDto> activities;
+    protected Map<String, ActivityDto> activities;
     protected Double wallet;
 }

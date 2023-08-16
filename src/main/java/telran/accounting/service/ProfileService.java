@@ -4,12 +4,13 @@ import telran.accounting.dto.*;
 import telran.accounting.model.EducationLevel;
 import telran.accounting.model.Roles;
 
+import java.util.Map;
 import java.util.Set;
 
 public interface ProfileService {
     ProfileDto addProfile(RegisterProfileDto newProfile);
 
-    ProfileDto logInProfile(String profileId);
+    Map<String, ProfileDto> logInProfile(String profileId);
 
     ProfileDto getProfile(String profileId);
 

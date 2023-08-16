@@ -1,5 +1,6 @@
 package telran.accounting.service;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
@@ -11,6 +12,8 @@ import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
 import telran.accounting.configuration.KafkaProducer;
 import telran.accounting.dao.ProfileRepository;
@@ -58,16 +61,26 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
 
     @Override
     @Transactional(readOnly = true)
-    public ProfileDto logInProfile(String profileId) {
+    public Map<String, ProfileDto> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
         String profileAuthenticated = SecurityContextHolder.getContext().getAuthentication().getName();
+        String token = "";
         if (profileAuthenticated != null && profileAuthenticated.equals(profile.getEmail())) {
             ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
+            //get token->
+            ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            HttpServletRequest httpRequest = (requestAttributes != null) ? requestAttributes.getRequest() : null;
+            String authorizationHeader = (httpRequest != null) ? httpRequest.getHeader("Authorization") : null;
+            if (authorizationHeader != null && authorizationHeader.startsWith("Basic ")) {
+                token = authorizationHeader.substring(6);
+            }
             //This block of code for send Authenticated Profile to receivers ->
             kafkaProducer.setMessage(profileDto);
             kafkaProducer.sendAuthenticatedProfile().get();
         }
-        return modelMapper.map(profile, ProfileDto.class);
+        HashMap<String, ProfileDto> response = new HashMap<>();
+        response.put(token, modelMapper.map(profile, ProfileDto.class));
+        return response;
     }
 
     @Override
@@ -215,7 +228,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         if (!profileRepository.existsByRolesContaining(Roles.ADMINISTRATOR.name())) {
             String password = BCrypt.hashpw("admin", BCrypt.gensalt());
             String email = EmailEncryptionConfiguration.encryptAndEncodeUserId("adminemail@mail.com");
-            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashSet<Activity>(), 0.);
+            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashMap<>(), 0.);
             profileRepository.save(adminProfile);
         }
     }

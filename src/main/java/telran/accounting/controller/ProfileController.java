@@ -1,11 +1,16 @@
 package telran.accounting.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import telran.accounting.dto.*;
 import telran.accounting.service.ProfileService;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
@@ -19,7 +24,7 @@ public class ProfileController {
     }
 
     @PostMapping("/login")
-    public ProfileDto login(Principal principal) {
+    public Map<String, ProfileDto> login(Principal principal) {
         return profileService.logInProfile(principal.getName());
     }
 
