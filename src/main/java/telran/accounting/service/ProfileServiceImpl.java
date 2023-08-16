@@ -26,7 +26,6 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
-
     final ProfileRepository profileRepository;
     final ModelMapper modelMapper;
     final PasswordEncoder passwordEncoder;

@@ -5,12 +5,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import telran.accounting.dto.ProfileDto;
 
 import java.util.function.Supplier;
 
-@Service
+@Configuration
 @RequiredArgsConstructor
 public class KafkaProducer {
     private final StreamBridge streamBridge;
