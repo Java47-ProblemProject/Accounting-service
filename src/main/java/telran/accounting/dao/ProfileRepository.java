@@ -13,7 +13,5 @@ import java.util.Set;
 
 public interface ProfileRepository extends MongoRepository<Profile, String> {
     boolean existsByRolesContaining(String role);
-    //@Query("db.Profiles.updateMany({}, {$unset: {'activityId': ''}})")
-    @Query("db.Profiles.updateMany({}, {$unset: {'activities.?0': ''}})")
-    boolean removeKeyFromAllDocuments(String activityId);
+
 }
