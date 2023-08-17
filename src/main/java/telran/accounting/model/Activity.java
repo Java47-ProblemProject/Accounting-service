@@ -10,6 +10,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Activity {
+    protected String type;
     protected Boolean liked;
     protected Boolean disliked;
 }

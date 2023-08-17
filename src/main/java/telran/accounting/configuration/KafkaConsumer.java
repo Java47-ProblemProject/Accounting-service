@@ -20,13 +20,26 @@ public class KafkaConsumer {
     final ModelMapper modelMapper;
     @Setter
     ProfileDto profile;
+    @Setter
+    String problemIdToDelete;
 
     @Bean
     protected Consumer<ProfileDto> receiveUpdatedProfile() {
         return data -> {
-            System.out.println(data);
             Profile profileEntity = modelMapper.map(data, Profile.class);
             profileRepository.save(profileEntity);
+        };
+    }
+
+    @Bean
+    protected Consumer<String> receiveProblemIdToDelete() {
+        return data -> {
+            profileRepository.findAll().forEach(
+                    person -> {
+                        person.getActivities().remove(data);
+                        profileRepository.save(person);
+                    }
+            );
         };
     }
 

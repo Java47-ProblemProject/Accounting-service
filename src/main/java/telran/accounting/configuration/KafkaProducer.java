@@ -6,7 +6,6 @@ import lombok.Setter;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Service;
 import telran.accounting.dto.ProfileDto;
 
 import java.util.function.Supplier;
@@ -16,16 +15,15 @@ import java.util.function.Supplier;
 public class KafkaProducer {
     private final StreamBridge streamBridge;
     @Setter
-    private ProfileDto message;
+    private ProfileDto profile;
 
     @Bean
     public Supplier<ProfileDto> sendAuthenticatedProfile() {
         return () -> {
-            if (message != null) {
-                //System.out.println(message);
-                streamBridge.send("sendAuthenticatedProfile-out-0", message);
-                ProfileDto sentMessage = message;
-                message = null;
+            if (profile != null) {
+                streamBridge.send("sendAuthenticatedProfile-out-0", profile);
+                ProfileDto sentMessage = profile;
+                profile = null;
                 return sentMessage;
             }
             return null;

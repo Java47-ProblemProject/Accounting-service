@@ -1,15 +1,11 @@
 package telran.accounting.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import telran.accounting.dto.*;
 import telran.accounting.service.ProfileService;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Principal;
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -65,7 +61,7 @@ public class ProfileController {
 
     @PutMapping("/resetpassword/{emailAddress}")
     public Boolean resetPassword(@PathVariable String emailAddress) {
-        return profileService.resetPassword(emailAddress );
+        return profileService.resetPassword(emailAddress);
     }
 
     @DeleteMapping("/delete/{profileId}")
@@ -75,7 +71,7 @@ public class ProfileController {
 
     @PutMapping("/editrole/{profileId}/{targetId}")
     public ProfileDto editRole(@PathVariable String profileId, @PathVariable String targetId, @RequestBody RoleDto roles) {
-        return profileService.editRole(profileId,targetId, roles);
+        return profileService.editRole(profileId, targetId, roles);
     }
 
     @DeleteMapping("/deleteuser/{profileId}/{targetId}")

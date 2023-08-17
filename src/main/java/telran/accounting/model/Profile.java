@@ -49,6 +49,10 @@ public class Profile {
         this.wallet = 0.;
     }
 
+    public void removeActivity(String id) {
+        this.activities.remove(id);
+    }
+
     public void editCommunities(Set<String> newCommunities) {
         this.communities = newCommunities;
     }

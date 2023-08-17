@@ -32,7 +32,6 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     final JavaMailSender javaMailSender;
     final KafkaProducer kafkaProducer;
 
-
     @Override
     @Transactional
     public ProfileDto addProfile(RegisterProfileDto newProfile) {
@@ -74,7 +73,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
                 token = authorizationHeader.substring(6);
             }
             //This block of code for send Authenticated Profile to receivers ->
-            kafkaProducer.setMessage(profileDto);
+            kafkaProducer.setProfile(profileDto);
             kafkaProducer.sendAuthenticatedProfile().get();
         }
         HashMap<String, ProfileDto> response = new HashMap<>();
