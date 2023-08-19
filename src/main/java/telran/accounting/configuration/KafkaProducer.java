@@ -15,18 +15,48 @@ import java.util.function.Supplier;
 public class KafkaProducer {
     private final StreamBridge streamBridge;
     @Setter
-    private ProfileDto profile;
+    private ProfileDto profileToProblem;
+    @Setter
+    private ProfileDto profileToComment;
 
     @Bean
-    public Supplier<ProfileDto> sendAuthenticatedProfile() {
+    public Supplier<ProfileDto> sendAuthenticatedProfileToProblem() {
         return () -> {
-            if (profile != null) {
-                streamBridge.send("sendAuthenticatedProfile-out-0", profile);
-                ProfileDto sentMessage = profile;
-                profile = null;
+            if (profileToProblem != null) {
+                System.out.println("sendAuthenticatedProfileToProblem : " + profileToProblem);
+                streamBridge.send("sendAuthenticatedProfileToProblem-out-0", profileToProblem);
+                ProfileDto sentMessage = profileToProblem;
+                profileToProblem = null;
                 return sentMessage;
             }
             return null;
         };
     }
+
+    @Bean
+    public Supplier<ProfileDto> sendAuthenticatedProfileToComment() {
+        return () -> {
+            if (profileToComment != null) {
+                System.out.println("sendAuthenticatedProfileToComment : " + profileToComment);
+                streamBridge.send("sendAuthenticatedProfileToComment-out-0",profileToComment);
+                ProfileDto sentMessage = profileToComment;
+                profileToComment = null;
+                return sentMessage;
+            }
+            return null;
+        };
+    }
+
+//    public Supplier<ProfileDto> createSupplier(String destination) {
+//        return () -> {
+//            if (profile != null) {
+//                System.out.println(destination + " : " + profile);
+//                streamBridge.send(destination, profile);
+//                ProfileDto sentMessage = profile;
+//                profile = null;
+//                return sentMessage;
+//            }
+//            return null;
+//        };
+//    }
 }

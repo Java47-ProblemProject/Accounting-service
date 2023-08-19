@@ -73,8 +73,10 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
                 token = authorizationHeader.substring(6);
             }
             //This block of code for send Authenticated Profile to receivers ->
-            kafkaProducer.setProfile(profileDto);
-            kafkaProducer.sendAuthenticatedProfile().get();
+            kafkaProducer.setProfileToComment(profileDto);
+            kafkaProducer.setProfileToProblem(profileDto);
+//            kafkaProducer.sendAuthenticatedProfileToProblem().get();
+//            kafkaProducer.sendAuthenticatedProfileToComment().get();
         }
         HashMap<String, ProfileDto> response = new HashMap<>();
         response.put(token, modelMapper.map(profile, ProfileDto.class));

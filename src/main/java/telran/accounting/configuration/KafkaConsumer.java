@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.Transactional;
 import telran.accounting.dao.ProfileCustomRepository;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.ProfileDto;
@@ -26,6 +27,7 @@ public class KafkaConsumer {
     String problemIdToDelete;
 
     @Bean
+    @Transactional
     protected Consumer<ProfileDto> receiveUpdatedProfile() {
         return data -> {
             Profile profileEntity = modelMapper.map(data, Profile.class);
@@ -34,9 +36,8 @@ public class KafkaConsumer {
     }
 
     @Bean
+    @Transactional
     protected Consumer<String> receiveProblemIdToDelete() {
         return profileCustomRepository::removeKeyFromActivities;
     }
-
-
 }
