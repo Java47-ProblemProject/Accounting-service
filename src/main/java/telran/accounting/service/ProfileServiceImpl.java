@@ -61,21 +61,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional(readOnly = true)
     public Map<String, ProfileDto> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
-        String profileAuthenticated = SecurityContextHolder.getContext().getAuthentication().getName();
-        String token = "";
-        if (profileAuthenticated != null && profileAuthenticated.equals(profile.getEmail())) {
-            ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
-            //get token->
-            ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            HttpServletRequest httpRequest = (requestAttributes != null) ? requestAttributes.getRequest() : null;
-            String authorizationHeader = (httpRequest != null) ? httpRequest.getHeader("Authorization") : null;
-            if (authorizationHeader != null && authorizationHeader.startsWith("Basic ")) {
-                token = authorizationHeader.substring(6);
-            }
-            //This block of code for send Authenticated Profile to receivers ->
-           // kafkaProducer.setProfileToComment(profileDto);
-            kafkaProducer.setProfileToProblem(profileDto);
-        }
+        String token = generateToken(profile);
         HashMap<String, ProfileDto> response = new HashMap<>();
         response.put(token, modelMapper.map(profile, ProfileDto.class));
         return response;
@@ -94,6 +80,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         profile.setUsername(newName.getUsername());
         profileRepository.save(profile);
+        kafkaProducer.setNewAuthor(profileId + "," + newName.getUsername());
         return modelMapper.map(profile, ProfileDto.class);
     }
 
@@ -162,13 +149,11 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         }
         Profile profile = findProfileOrThrowError(encryptedEmail);
         String newPassword = new Base64StringKeyGenerator().generateKey();
-
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(emailAddress);
         message.setSubject("JAN new password");
         message.setText("Your new password is:\n\n" + newPassword + "\n\nPlease remember to change it once you log in for the first time.");
         javaMailSender.send(message);
-
         newPassword = passwordEncoder.encode(newPassword);
         profile.setPassword(newPassword);
         profileRepository.save(profile);
@@ -179,6 +164,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional
     public ProfileDto deleteUser(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
+        kafkaProducer.setRemovedAuthor(profile.getEmail());
         profileRepository.deleteById(profileId);
         return modelMapper.map(profile, ProfileDto.class);
     }
@@ -202,6 +188,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile targetProfile = findProfileOrThrowError(targetId);
         if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
             profileRepository.deleteById(targetId);
+            kafkaProducer.setRemovedAuthor(targetProfile.getEmail());
         }
         return modelMapper.map(targetProfile, ProfileDto.class);
     }
@@ -219,6 +206,24 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
 
     private Profile findProfileOrThrowError(String profileId) {
         return profileRepository.findById(profileId).orElseThrow(NoSuchElementException::new);
+    }
+
+    private String generateToken(Profile profile) {
+        String profileAuthenticated = SecurityContextHolder.getContext().getAuthentication().getName();
+        String token = "";
+        if (profileAuthenticated != null && profileAuthenticated.equals(profile.getEmail())) {
+            ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
+            //get token->
+            ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            HttpServletRequest httpRequest = (requestAttributes != null) ? requestAttributes.getRequest() : null;
+            String authorizationHeader = (httpRequest != null) ? httpRequest.getHeader("Authorization") : null;
+            if (authorizationHeader != null && authorizationHeader.startsWith("Basic ")) {
+                token = authorizationHeader.substring(6);
+            }
+            //This block of code for send Authenticated Profile to receivers ->
+            kafkaProducer.setProfile(profileDto);
+        }
+        return token;
     }
 
     @Override

@@ -15,17 +15,43 @@ import java.util.function.Supplier;
 public class KafkaProducer {
     private final StreamBridge streamBridge;
     @Setter
-    private ProfileDto profileToProblem;
-//    @Setter
-//    private ProfileDto profileToComment;
+    private ProfileDto profile;
+    @Setter
+    private String newAuthor;
+    @Setter
+    private String removedAuthor;
 
     @Bean
-    public Supplier<ProfileDto> sendProfileToProblem() {
+    public Supplier<ProfileDto> sendProfile() {
         return () -> {
-            if (profileToProblem != null) {
-                streamBridge.send("sendAuthenticatedProfileToProblem-out-0", profileToProblem);
-                ProfileDto sentMessage = profileToProblem;
-                profileToProblem = null;
+            if (profile != null) {
+                //streamBridge.send("sendProfile-out-0", profile);
+                ProfileDto sentMessage = profile;
+                profile = null;
+                return sentMessage;
+            }
+            return null;
+        };
+    }
+
+    @Bean
+    public Supplier<String> sendNameToChange() {
+        return () -> {
+            if (newAuthor != null) {
+                String sentMessage = newAuthor;
+                newAuthor = null;
+                return sentMessage;
+            }
+            return null;
+        };
+    }
+
+    @Bean
+    public Supplier<String> sendAuthorToRemove() {
+        return () -> {
+            if (removedAuthor != null) {
+                String sentMessage = removedAuthor;
+                removedAuthor = null;
                 return sentMessage;
             }
             return null;

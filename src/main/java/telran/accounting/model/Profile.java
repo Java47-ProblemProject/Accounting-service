@@ -49,6 +49,10 @@ public class Profile {
         this.wallet = 0.;
     }
 
+    public void removeFormulatedProblem(){
+        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()-1);
+    }
+
     public void removeActivity(String id) {
         this.activities.remove(id);
     }
