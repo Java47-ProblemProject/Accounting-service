@@ -65,7 +65,6 @@ public class Profile {
         this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()-1);
     }
 
-
     public void editCommunities(Set<String> newCommunities) {
         this.communities = newCommunities;
     }
