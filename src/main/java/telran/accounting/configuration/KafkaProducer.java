@@ -21,6 +21,21 @@ public class KafkaProducer {
     @Setter
     private String removedAuthor;
 
+    @Setter
+    private ProfileDto updatedProfile;
+
+    @Bean
+    public Supplier<ProfileDto> sendUpdatedProfile() {
+        return () -> {
+            if (updatedProfile != null) {
+                ProfileDto sentMessage = updatedProfile;
+                updatedProfile = null;
+                return sentMessage;
+            }
+            return null;
+        };
+    }
+
     @Bean
     public Supplier<ProfileDto> sendProfile() {
         return () -> {

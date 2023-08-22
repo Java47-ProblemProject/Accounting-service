@@ -49,13 +49,22 @@ public class Profile {
         this.wallet = 0.;
     }
 
-    public void removeFormulatedProblem(){
-        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()-1);
+    public void addActivity(String id, Activity activity) {
+        this.activities.put(id, activity);
     }
 
     public void removeActivity(String id) {
         this.activities.remove(id);
     }
+
+    public void addFormulatedProblem(){
+        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()+1);
+    }
+
+    public void removeFormulatedProblem(){
+        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()-1);
+    }
+
 
     public void editCommunities(Set<String> newCommunities) {
         this.communities = newCommunities;

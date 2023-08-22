@@ -2,7 +2,6 @@ package telran.accounting.configuration;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,6 +42,15 @@ public class KafkaConsumer {
             itemsToDelete.addAll(data.getSolutions());
             itemsToDelete.add(data.getId());
             profileCustomRepository.removeKeyFromActivities(itemsToDelete);
+        };
+    }
+
+    @Bean
+    @Transactional
+    protected Consumer<String> receiveCommentIdToDelete() {
+        return data -> {
+            String commentId = data.split(",")[1];
+            profileCustomRepository.removeKeyFromActivities(Set.of(commentId));
         };
     }
 }
