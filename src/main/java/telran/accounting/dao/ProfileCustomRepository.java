@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import telran.accounting.model.Profile;
 
 import java.util.Set;
@@ -13,6 +14,8 @@ import java.util.Set;
 @AllArgsConstructor
 public class ProfileCustomRepository {
     private final MongoTemplate mongoTemplate;
+
+    @Transactional
     public void removeKeyFromActivities(Set<String> activityIds) {
         Query query = new Query();
         Update update = new Update();

@@ -14,41 +14,13 @@ import java.util.function.Supplier;
 public class KafkaProducer {
     @Setter
     private ProfileDto profile;
-    @Setter
-    private String newAuthor;
-    @Setter
-    private String removedAuthor;
 
-    @Bean//repaired
+    @Bean
     public Supplier<ProfileDto> sendProfile() {
         return () -> {
             if (profile != null) {
                 ProfileDto sentMessage = profile;
                 profile = null;
-                return sentMessage;
-            }
-            return null;
-        };
-    }
-
-    @Bean
-    public Supplier<String> sendNameToChange() {
-        return () -> {
-            if (newAuthor != null) {
-                String sentMessage = newAuthor;
-                newAuthor = null;
-                return sentMessage;
-            }
-            return null;
-        };
-    }
-
-    @Bean
-    public Supplier<String> sendAuthorToRemove() {
-        return () -> {
-            if (removedAuthor != null) {
-                String sentMessage = removedAuthor;
-                removedAuthor = null;
                 return sentMessage;
             }
             return null;

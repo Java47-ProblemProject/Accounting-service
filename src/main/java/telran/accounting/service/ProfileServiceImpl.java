@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,6 +13,7 @@ import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
@@ -80,8 +82,9 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         profile.setUsername(newName.getUsername());
         profileRepository.save(profile);
-        kafkaProducer.setNewAuthor(profileId + "," + newName.getUsername());
-        return modelMapper.map(profile, ProfileDto.class);
+        ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
+        kafkaProducer.setProfile(profileDto);
+        return profileDto;
     }
 
     @Override
@@ -164,9 +167,11 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional
     public ProfileDto deleteUser(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
-        kafkaProducer.setRemovedAuthor(profile.getEmail());
         profileRepository.deleteById(profileId);
-        return modelMapper.map(profile, ProfileDto.class);
+        ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
+        profileDto.setUsername("DELETED_PROFILE");
+        kafkaProducer.setProfile(profileDto);
+        return profileDto;
     }
 
     //Administrative methods//
@@ -188,9 +193,11 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile targetProfile = findProfileOrThrowError(targetId);
         if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
             profileRepository.deleteById(targetId);
-            kafkaProducer.setRemovedAuthor(targetProfile.getEmail());
-        }
-        return modelMapper.map(targetProfile, ProfileDto.class);
+            ProfileDto profileDto = modelMapper.map(targetProfile, ProfileDto.class);
+            profileDto.setUsername("DELETED_PROFILE");
+            kafkaProducer.setProfile(profileDto);
+            return profileDto;
+        } else throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete that user");
     }
 
     @Override
@@ -200,8 +207,9 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
             targetProfile.setAvatar("");
             profileRepository.save(targetProfile);
-        }
-        return modelMapper.map(targetProfile, ProfileDto.class);
+            return modelMapper.map(targetProfile, ProfileDto.class);
+        } else
+            throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete users avatar");
     }
 
     private Profile findProfileOrThrowError(String profileId) {
