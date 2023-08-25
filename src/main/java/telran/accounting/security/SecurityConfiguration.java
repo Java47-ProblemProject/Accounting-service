@@ -16,7 +16,7 @@ public class SecurityConfiguration {
         http.httpBasic(Customizer.withDefaults());
         http.csrf(AbstractHttpConfigurer::disable);
         http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/user/registration", "/user/resetpassword/*")
+                .requestMatchers("/user/registration", "/user/resetpassword/*", "/user/geteducation")
                 .permitAll()
                 //User section//
                 .requestMatchers(HttpMethod.PUT, "/user/editname/{userId}")

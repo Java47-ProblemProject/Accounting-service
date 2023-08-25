@@ -3,10 +3,15 @@ package telran.accounting.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import telran.accounting.dto.*;
+import telran.accounting.model.EducationLevel;
 import telran.accounting.service.ProfileService;
 
 import java.security.Principal;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/user")
@@ -27,6 +32,11 @@ public class ProfileController {
     @GetMapping("/getuser/{profileId}")
     public ProfileDto getProfile(@PathVariable String profileId) {
         return profileService.getProfile(profileId);
+    }
+
+    @GetMapping("/getallusers")
+    public Set<ProfileDto> getProfiles() {
+        return profileService.getProfiles();
     }
 
     @PutMapping("/editname/{profileId}")
@@ -82,5 +92,10 @@ public class ProfileController {
     @DeleteMapping("/deleteavatar/{profileId}/{targetId}")
     public ProfileDto deleteAvatar(@PathVariable String profileId, @PathVariable String targetId) {
         return profileService.deleteAvatar(profileId, targetId);
+    }
+
+    @GetMapping("/geteducation")
+    public List<String> getEducationList() {
+        return profileService.getEducationList();
     }
 }

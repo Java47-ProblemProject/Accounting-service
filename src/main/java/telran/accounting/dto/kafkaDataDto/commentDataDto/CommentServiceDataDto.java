@@ -1,4 +1,4 @@
-package telran.accounting.dto.kafkaData;
+package telran.accounting.dto.kafkaDataDto.commentDataDto;
 
 import lombok.Getter;
 
@@ -7,5 +7,5 @@ public class CommentServiceDataDto {
     private String profileId;
     private String problemId;
     private String commentsId;
-    private String methodName;
+    private CommentMethodName methodName;
 }

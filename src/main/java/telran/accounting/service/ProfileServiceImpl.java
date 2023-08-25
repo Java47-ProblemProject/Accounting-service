@@ -21,9 +21,10 @@ import telran.accounting.configuration.KafkaProducer;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.model.*;
-import telran.accounting.model.exceptions.ProfileExistsException;
+import telran.accounting.dto.exceptions.ProfileExistsException;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +75,12 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     public ProfileDto getProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
         return modelMapper.map(profile, ProfileDto.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<ProfileDto> getProfiles() {
+        return profileRepository.findAll().stream().map(e -> modelMapper.map(e, ProfileDto.class)).collect(Collectors.toSet());
     }
 
     @Override
@@ -210,6 +217,17 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
             return modelMapper.map(targetProfile, ProfileDto.class);
         } else
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete users avatar");
+    }
+
+    @Override
+    public List<String> getEducationList() {
+        return Arrays.stream(EducationLevel.values())
+                .map(l -> {
+                    String educationLevel = l.name().toLowerCase().replace("_", " ");
+                    educationLevel = educationLevel.substring(0, 1).toUpperCase() + educationLevel.substring(1);
+                    return educationLevel;
+                })
+                .collect(Collectors.toList());
     }
 
     private Profile findProfileOrThrowError(String profileId) {
