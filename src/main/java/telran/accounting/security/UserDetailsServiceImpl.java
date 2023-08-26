@@ -12,19 +12,23 @@ import telran.accounting.configuration.EmailEncryptionConfiguration;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.model.Profile;
 
+
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
-    final ProfileRepository profileRepository;
+    private final ProfileRepository profileRepository;
+    private final JwtTokenService jwtTokenService;
+
     @SneakyThrows
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         String encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(email);
-        Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(()-> new UsernameNotFoundException(email));
+        Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(()-> new UsernameNotFoundException(encryptedEmail));
         String[] roles = profile.getRoles()
                 .stream()
                 .map(r-> "ROLE_" + r)
                 .toArray(String[]::new);
+        String token = jwtTokenService.generateToken(profile);
         return new User(profile.getEmail(), profile.getPassword(), AuthorityUtils.createAuthorityList(roles));
     }
 }

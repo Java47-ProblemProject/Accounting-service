@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +23,7 @@ import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.model.*;
 import telran.accounting.dto.exceptions.ProfileExistsException;
+import telran.accounting.security.UserDetailsServiceImpl;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,6 +36,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     final PasswordEncoder passwordEncoder;
     final JavaMailSender javaMailSender;
     final KafkaProducer kafkaProducer;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     @Transactional
@@ -64,7 +67,14 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional(readOnly = true)
     public Map<String, ProfileDto> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
-        String token = generateToken(profile);
+        String decryptedEmail;
+        try {
+            decryptedEmail = EmailEncryptionConfiguration.decryptAndDecodeUserId(profile.getEmail());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        String token = "token";
+        kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
         HashMap<String, ProfileDto> response = new HashMap<>();
         response.put(token, modelMapper.map(profile, ProfileDto.class));
         return response;
