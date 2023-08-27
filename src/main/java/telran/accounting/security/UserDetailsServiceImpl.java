@@ -28,7 +28,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .stream()
                 .map(r-> "ROLE_" + r)
                 .toArray(String[]::new);
-        String token = jwtTokenService.generateToken(profile);
+        jwtTokenService.generateToken(profile);
         return new User(profile.getEmail(), profile.getPassword(), AuthorityUtils.createAuthorityList(roles));
     }
 }

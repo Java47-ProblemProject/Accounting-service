@@ -13,14 +13,19 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import telran.accounting.configuration.EmailEncryptionConfiguration;
+import telran.accounting.dao.ProfileRepository;
+import telran.accounting.model.Profile;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 @Component
 @RequiredArgsConstructor
 public class JwtRequestFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final UserDetailsServiceImpl jwtUserDetailsService;
+    private final ProfileRepository profileRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain chain) throws ServletException, IOException {
@@ -30,17 +35,21 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             return;
         }
         String token = header.substring(7);
-
-        // Проверяем валидность токена
         if (!jwtTokenService.validateToken(token)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         String email = jwtTokenService.extractEmailFromToken(token);
-        if (email == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
+        try {
+            String encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(email);
+            Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(NoSuchElementException::new);
+            if (!encryptedEmail.equals(profile.getEmail())) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
 
         UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(email);

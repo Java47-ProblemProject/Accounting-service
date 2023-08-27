@@ -1,29 +1,24 @@
 package telran.accounting.service;
 
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
 import telran.accounting.configuration.KafkaProducer;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.model.*;
 import telran.accounting.dto.exceptions.ProfileExistsException;
-import telran.accounting.security.UserDetailsServiceImpl;
+import telran.accounting.security.JwtTokenService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,7 +31,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     final PasswordEncoder passwordEncoder;
     final JavaMailSender javaMailSender;
     final KafkaProducer kafkaProducer;
-    private final UserDetailsServiceImpl userDetailsService;
+    final JwtTokenService jwtTokenService;
 
     @Override
     @Transactional
@@ -67,13 +62,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional(readOnly = true)
     public Map<String, ProfileDto> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
-        String decryptedEmail;
-        try {
-            decryptedEmail = EmailEncryptionConfiguration.decryptAndDecodeUserId(profile.getEmail());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        String token = "token";
+        String token = jwtTokenService.getCurrentProfileToken(profileId);
         kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
         HashMap<String, ProfileDto> response = new HashMap<>();
         response.put(token, modelMapper.map(profile, ProfileDto.class));
@@ -242,24 +231,6 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
 
     private Profile findProfileOrThrowError(String profileId) {
         return profileRepository.findById(profileId).orElseThrow(NoSuchElementException::new);
-    }
-
-    private String generateToken(Profile profile) {
-        String profileAuthenticated = SecurityContextHolder.getContext().getAuthentication().getName();
-        String token = "";
-        if (profileAuthenticated != null && profileAuthenticated.equals(profile.getEmail())) {
-            ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
-            //get token->
-            ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            HttpServletRequest httpRequest = (requestAttributes != null) ? requestAttributes.getRequest() : null;
-            String authorizationHeader = (httpRequest != null) ? httpRequest.getHeader("Authorization") : null;
-            if (authorizationHeader != null && authorizationHeader.startsWith("Basic ")) {
-                token = authorizationHeader.substring(6);
-            }
-            //This block of code for send Authenticated Profile to receivers ->
-            kafkaProducer.setProfile(profileDto);
-        }
-        return token;
     }
 
     @Override

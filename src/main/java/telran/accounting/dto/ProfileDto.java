@@ -16,7 +16,6 @@ public class ProfileDto {
     protected String educationLevel;
     protected Set<String> communities;
     protected LocationDto location;
-    protected String password;
     protected Set<String> roles;
     protected String avatar;
     protected StatsDto stats;
