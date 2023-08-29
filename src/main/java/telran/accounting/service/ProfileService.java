@@ -14,6 +14,7 @@ public interface ProfileService {
     Map<String, ProfileDto> logInProfile(String profileId);
 
     ProfileDto getProfile(String profileId);
+    Set<ProfileDto> getProfilesByCommunities(Set<String> communities);
 
     Set<ProfileDto> getProfiles();
 

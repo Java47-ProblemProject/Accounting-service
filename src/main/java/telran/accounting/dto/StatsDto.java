@@ -7,5 +7,5 @@ public class StatsDto {
     protected Integer solvedProblems;
     protected Integer checkedSolutions;
     protected Integer formulatedProblems;
-    protected Integer rating;
+    protected Double rating;
 }

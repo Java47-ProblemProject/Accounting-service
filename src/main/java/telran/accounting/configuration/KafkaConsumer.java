@@ -35,50 +35,55 @@ public class KafkaConsumer {
     @Transactional
     protected Consumer<ProblemServiceDataDto> receiveDataFromProblem() {
         return data -> {
+            String problemAuthorId = data.getProblemAuthorId();
+            Double problemRating = data.getProblemRating();
             String profileId = data.getAuthorizedProfileId();
             String problemId = data.getProblemId();
             ProblemMethodName methodName = data.getMethodName();
             Set<String> comments = data.getComments();
             Set<String> solutions = data.getSolutions();
             if (methodName.equals(ProblemMethodName.ADD_PROBLEM)) {
-                Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                Profile profile = profileRepository.findById(problemAuthorId).get();
+                profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 profile.addFormulatedProblem();
+                profile.editStats(String.valueOf(profile.getEducationLevel()));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(ProblemMethodName.DELETE_PROBLEM)) {
+                Profile profile = profileRepository.findById(problemAuthorId).get();
+                profile.removeActivity(problemId);
+                profile.removeFormulatedProblem();
+                profile.editStats(String.valueOf(profile.getEducationLevel()));
+                profileRepository.save(profile);
                 Set<String> problemIdWithCommentsSolutions = new HashSet<>();
                 problemIdWithCommentsSolutions.add(problemId);
                 problemIdWithCommentsSolutions.addAll(comments);
                 problemIdWithCommentsSolutions.addAll(solutions);
-
                 profileCustomRepository.removeKeyFromActivities(problemIdWithCommentsSolutions);
-
-                Profile profile = profileRepository.findById(profileId).get();
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(ProblemMethodName.ADD_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", true, false));
+                profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, true, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(ProblemMethodName.REMOVE_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(ProblemMethodName.ADD_DISLIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", false, true));
+                profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, true));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(ProblemMethodName.REMOVE_DISLIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
@@ -88,21 +93,19 @@ public class KafkaConsumer {
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
-            if (methodName.equals(ProblemMethodName.SUBSCRIBE)) {
+            if (methodName.equals(ProblemMethodName.SUBSCRIBE) || methodName.equals(ProblemMethodName.DONATE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                if (!profile.getActivities().containsKey(problemId)) {
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
+                }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(ProblemMethodName.UNSUBSCRIBE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.removeActivity(problemId);
-                profileRepository.save(profile);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
-            }
-            if (methodName.equals(ProblemMethodName.DONATE)) {
-                Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                if (!profile.getEmail().equals(problemAuthorId) && !profile.getActivities().get(problemId).getLiked() && !profile.getActivities().get(problemId).getDisliked()) {
+                    profile.removeActivity(problemId);
+                }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
@@ -115,44 +118,45 @@ public class KafkaConsumer {
         return data -> {
             String profileId = data.getProfileId();
             String problemId = data.getProblemId();
+            Double problemRating = data.getProblemRating();
             CommentMethodName methodName = data.getMethodName();
             String commentId = data.getCommentsId();
             if (methodName.equals(CommentMethodName.ADD_COMMENT)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(commentId, new Activity("COMMENT", false, false));
+                profile.addActivity(commentId, addNewActivity("COMMENT", 0., false, false));
                 if (!profile.getActivities().containsKey(problemId)) {
-                    profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(CommentMethodName.ADD_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(commentId, new Activity("COMMENT", true, false));
+                profile.addActivity(commentId, addNewActivity("COMMENT", 0., true, false));
                 if (!profile.getActivities().containsKey(problemId)) {
-                    profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(CommentMethodName.REMOVE_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(commentId, new Activity("COMMENT", false, false));
+                profile.addActivity(commentId, addNewActivity("COMMENT", 0., false, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(CommentMethodName.ADD_DISLIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(commentId, new Activity("COMMENT", false, true));
+                profile.addActivity(commentId, addNewActivity("COMMENT", 0., false, true));
                 if (!profile.getActivities().containsKey(problemId)) {
-                    profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(CommentMethodName.REMOVE_DISLIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(commentId, new Activity("COMMENT", false, false));
+                profile.addActivity(commentId, addNewActivity("COMMENT", 0., false, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
@@ -195,44 +199,45 @@ public class KafkaConsumer {
         return data -> {
             String profileId = data.getProfileId();
             String problemId = data.getProblemId();
+            Double problemRating = data.getProblemRating();
             SolutionMethodName methodName = data.getMethodName();
             String solutionId = data.getSolutionId();
             if (methodName.equals(SolutionMethodName.ADD_SOLUTION)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(solutionId, new Activity("SOLUTION", false, false));
+                profile.addActivity(solutionId,addNewActivity("SOLUTION", 0., false, false));
                 if (!profile.getActivities().containsKey(problemId)) {
-                    profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(SolutionMethodName.ADD_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(solutionId, new Activity("SOLUTION", true, false));
+                profile.addActivity(solutionId, addNewActivity("SOLUTION", 0., true, false));
                 if (!profile.getActivities().containsKey(problemId)) {
-                    profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(SolutionMethodName.REMOVE_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(problemId, new Activity("SOLUTION", false, false));
+                profile.addActivity(problemId, addNewActivity("SOLUTION", 0., false, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(SolutionMethodName.ADD_DISLIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(solutionId, new Activity("SOLUTION", false, true));
+                profile.addActivity(solutionId, addNewActivity("SOLUTION", 0., false, true));
                 if (!profile.getActivities().containsKey(problemId)) {
-                    profile.addActivity(problemId, new Activity("PROBLEM", false, false));
+                    profile.addActivity(problemId, addNewActivity("PROBLEM", problemRating, false, false));
                 }
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
             if (methodName.equals(SolutionMethodName.REMOVE_LIKE)) {
                 Profile profile = profileRepository.findById(profileId).get();
-                profile.addActivity(solutionId, new Activity("SOLUTION", false, false));
+                profile.addActivity(solutionId, addNewActivity("SOLUTION", 0., false, false));
                 profileRepository.save(profile);
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
@@ -266,5 +271,8 @@ public class KafkaConsumer {
                 kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
             }
         };
+    }
+    private Activity addNewActivity(String type, double problemRating, boolean like, boolean dislike) {
+        return new Activity(type, problemRating, like, dislike);
     }
 }

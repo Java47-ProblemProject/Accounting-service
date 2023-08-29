@@ -45,7 +45,7 @@ public class Profile {
         this.communities = new HashSet<>();
         this.activities = new HashMap<>();
         this.avatar = "";
-        this.stats = new Stats(0, 0, 0, 0);
+        this.stats = new Stats(0, 0, 0, 0.);
         this.wallet = 0.;
     }
 
@@ -57,12 +57,12 @@ public class Profile {
         this.activities.remove(id);
     }
 
-    public void addFormulatedProblem(){
-        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()+1);
+    public void addFormulatedProblem() {
+        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() + 1);
     }
 
-    public void removeFormulatedProblem(){
-        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems()-1);
+    public void removeFormulatedProblem() {
+        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() - 1);
     }
 
     public void editCommunities(Set<String> newCommunities) {
@@ -73,20 +73,24 @@ public class Profile {
         this.stats.setRating(calculateRating(EducationLevel.valueOf(educationLevel)));
     }
 
-    private int calculateRating(EducationLevel educationLevel) {
+    public double calculateRating(EducationLevel educationLevel) {
+        double solvedProblems = 0.5 * this.stats.getSolvedProblems();
+        double checkedSolutions = 0.3 * this.stats.getCheckedSolutions();
+        double formulatedProblems = 0.1 * this.stats.getFormulatedProblems();
+        double rating = solvedProblems + checkedSolutions + formulatedProblems;
         return switch (educationLevel) {
-            case PRESCHOOL -> 10;
-            case PRIMARY -> 20;
-            case SECONDARY -> 30;
-            case HIGH_SCHOOL -> 40;
-            case ASSOCIATE_DEGREE -> 50;
-            case BACHELOR_DEGREE -> 60;
-            case MASTER_DEGREE -> 70;
-            case DOCTORATE_DEGREE -> 80;
-            case PROFESSIONAL_DEGREE -> 90;
-            case POSTDOCTORAL_FELLOWSHIP -> 100;
-            case HONORARY_DEGREE -> 110;
-            case OTHER -> 0;
+            case PRESCHOOL -> 10 + rating;
+            case PRIMARY -> 12 + rating;
+            case SECONDARY -> 14 + rating;
+            case HIGH_SCHOOL -> 16 + rating;
+            case ASSOCIATE_DEGREE -> 18 + rating;
+            case BACHELOR_DEGREE -> 20 + rating;
+            case MASTER_DEGREE -> 22 + rating;
+            case DOCTORATE_DEGREE -> 24 + rating;
+            case PROFESSIONAL_DEGREE -> 26 + rating;
+            case POSTDOCTORAL_FELLOWSHIP -> 28 + rating;
+            case HONORARY_DEGREE -> 30 + rating;
+            case OTHER -> rating;
         };
     }
 }

@@ -11,6 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Activity {
     protected String type;
+    protected Double rating;
     protected Boolean liked;
     protected Boolean disliked;
 }

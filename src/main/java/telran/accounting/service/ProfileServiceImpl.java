@@ -77,6 +77,13 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     }
 
     @Override
+    public Set<ProfileDto> getProfilesByCommunities(Set<String> communities) {
+        return profileRepository.findAllByCommunitiesContaining(communities)
+                .map(p -> modelMapper.map(p, ProfileDto.class))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Set<ProfileDto> getProfiles() {
         return profileRepository.findAll().stream().map(e -> modelMapper.map(e, ProfileDto.class)).collect(Collectors.toSet());

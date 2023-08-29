@@ -9,6 +9,7 @@ public class ProblemServiceDataDto {
     private String authorizedProfileId;
     private String problemId;
     private String problemAuthorId;
+    private Double problemRating;
     private ProblemMethodName methodName;
     private Set<String> comments;
     private Set<String> solutions;

@@ -34,6 +34,11 @@ public class ProfileController {
         return profileService.getProfile(profileId);
     }
 
+    @GetMapping("/getcomunityusers")
+    public Set<ProfileDto> getProfilesByCommunities(@RequestBody Set<String> communities) {
+        return profileService.getProfilesByCommunities(communities);
+    }
+
     @GetMapping("/getallusers")
     public Set<ProfileDto> getProfiles() {
         return profileService.getProfiles();
