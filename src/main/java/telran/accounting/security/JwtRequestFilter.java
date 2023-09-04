@@ -41,10 +41,10 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         }
 
         String email = jwtTokenService.extractEmailFromToken(token);
+        UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(email);
         try {
             String encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(email);
-            Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(NoSuchElementException::new);
-            if (!encryptedEmail.equals(profile.getEmail())) {
+            if (!encryptedEmail.equals(userDetails.getUsername())) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return;
             }
@@ -52,7 +52,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             throw new RuntimeException(e);
         }
 
-        UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(email);
+
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails, null, userDetails.getAuthorities());
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

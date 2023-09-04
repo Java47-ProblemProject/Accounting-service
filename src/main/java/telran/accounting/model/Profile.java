@@ -42,43 +42,54 @@ public class Profile {
 
     public Profile() {
         this.roles = new HashSet<>();
+        this.roles.add(Roles.USER);
         this.communities = new HashSet<>();
-        this.activities = new HashMap<>();
         this.avatar = "";
         this.stats = new Stats(0, 0, 0, 0.);
         this.wallet = 0.;
+        this.activities = new HashMap<>();
+        this.educationLevel = EducationLevel.OTHER;
     }
 
-    public void addActivity(String id, Activity activity) {
-        this.activities.put(id, activity);
+    public void addActivity(String id, Double problemRating, String entityType, Set<String> actions) {
+        if (!this.activities.containsKey(id)) {
+            this.activities.put(id, new Activity(entityType, problemRating));
+            calculateRating();
+            if (entityType.equals("PROBLEM") && actions.contains("AUTHOR")) {
+                this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() + 1);
+                calculateRating();
+            }
+        }
+        this.activities.get(id).action.addAll(actions);
+        calculateRating();
+
     }
 
-    public void removeActivity(String id) {
-        this.activities.remove(id);
-    }
-
-    public void addFormulatedProblem() {
-        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() + 1);
-    }
-
-    public void removeFormulatedProblem() {
-        this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() - 1);
+    public void removeActivity(String id, String action) {
+        this.activities.get(id).action.remove(action);
+        if (this.activities.get(id).action.contains("PROBLEM") && action.equals("AUTHOR")) {
+            this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() - 1);
+            calculateRating();
+        }
+        if (this.activities.get(id).getAction().isEmpty()) {
+            this.activities.remove(id);
+        }
     }
 
     public void editCommunities(Set<String> newCommunities) {
         this.communities = newCommunities;
     }
 
-    public void editStats(String educationLevel) {
-        this.stats.setRating(calculateRating(EducationLevel.valueOf(educationLevel)));
-    }
-
-    public double calculateRating(EducationLevel educationLevel) {
+    public void calculateRating() {
         double solvedProblems = 0.5 * this.stats.getSolvedProblems();
         double checkedSolutions = 0.3 * this.stats.getCheckedSolutions();
-        double formulatedProblems = 0.1 * this.stats.getFormulatedProblems();
+        double formulatedProblemsWeight = this.getActivities().values().stream()
+                .filter(e -> e.type.equals("PROBLEM") && e.action.contains("AUTHOR"))
+                .mapToDouble(Activity::getRating)
+                .sum();
+        double formulatedProblems = 0.1 * (this.stats.getFormulatedProblems() + formulatedProblemsWeight);
         double rating = solvedProblems + checkedSolutions + formulatedProblems;
-        return switch (educationLevel) {
+        this.stats.setRating(Double.parseDouble(String.format("%.2f", switch (this.educationLevel) {
             case PRESCHOOL -> 10 + rating;
             case PRIMARY -> 12 + rating;
             case SECONDARY -> 14 + rating;
@@ -91,6 +102,6 @@ public class Profile {
             case POSTDOCTORAL_FELLOWSHIP -> 28 + rating;
             case HONORARY_DEGREE -> 30 + rating;
             case OTHER -> rating;
-        };
+        })));
     }
 }

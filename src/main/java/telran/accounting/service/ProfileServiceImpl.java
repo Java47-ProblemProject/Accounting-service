@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
 import telran.accounting.configuration.KafkaProducer;
+import telran.accounting.dao.ProfileCustomRepository;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.model.*;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     final ProfileRepository profileRepository;
+    final ProfileCustomRepository profileCustomRepository;
     final ModelMapper modelMapper;
     final PasswordEncoder passwordEncoder;
     final JavaMailSender javaMailSender;
@@ -39,23 +41,23 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         String encryptedEmail;
         try {
             encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(newProfile.getEmail());
+            if (profileRepository.existsById(encryptedEmail)) {
+                throw new ProfileExistsException();
+            }
+            Profile profile = modelMapper.map(newProfile, Profile.class);
+            EducationLevel education = Arrays.stream(EducationLevel.values())
+                    .filter(e -> e.name().equalsIgnoreCase(newProfile.getEducationLevel().replace("_", " ")))
+                    .findFirst()
+                    .orElse(EducationLevel.OTHER);
+            profile.setEducationLevel(education);
+            profile.calculateRating();
+            profile.setPassword(passwordEncoder.encode(profile.getPassword()));
+            profile.setEmail(encryptedEmail);
+            profileRepository.save(profile);
+            return modelMapper.map(profile, ProfileDto.class);
         } catch (Exception e) {
-            throw new RuntimeException();
+            throw new RuntimeException("Failed to add profile", e);
         }
-        if (profileRepository.existsById(encryptedEmail)) {
-            throw new ProfileExistsException();
-        }
-        Profile profile = modelMapper.map(newProfile, Profile.class);
-        if (profile.getEducationLevel() == null) {
-            profile.setEducationLevel(EducationLevel.OTHER);
-        }
-        String hashedPassword = passwordEncoder.encode(profile.getPassword());
-        profile.setPassword(hashedPassword);
-        profile.setEmail(encryptedEmail);
-        profile.editStats(String.valueOf(profile.getEducationLevel()));
-        profile.setRoles(Set.of(Roles.USER));
-        profileRepository.save(profile);
-        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
@@ -106,10 +108,11 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         if (Arrays.stream(EducationLevel.values()).noneMatch(e -> e.toString().equalsIgnoreCase(newEducation))) {
             profile.setEducationLevel(EducationLevel.OTHER);
+            profile.calculateRating();
         } else {
             profile.setEducationLevel(EducationLevel.valueOf(newEducation.toUpperCase()));
+            profile.calculateRating();
         }
-        profile.editStats(newEducation);
         profileRepository.save(profile);
         return modelMapper.map(profile, ProfileDto.class);
     }
@@ -184,6 +187,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
         profileDto.setUsername("DELETED_PROFILE");
         kafkaProducer.setProfile(profileDto);
+        removeAllAuthorsActivities(profile);
         return profileDto;
     }
 
@@ -209,6 +213,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
             ProfileDto profileDto = modelMapper.map(targetProfile, ProfileDto.class);
             profileDto.setUsername("DELETED_PROFILE");
             kafkaProducer.setProfile(profileDto);
+            removeAllAuthorsActivities(targetProfile);
             return profileDto;
         } else throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete that user");
     }
@@ -240,12 +245,28 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         return profileRepository.findById(profileId).orElseThrow(NoSuchElementException::new);
     }
 
+    private void removeAllAuthorsActivities(Profile profile) {
+        Set<String> allProblemsComments = profile.getActivities()
+                .entrySet().stream()
+                .filter(e -> e.getValue().getAction().contains("AUTHOR") && e.getValue().getType().equals("PROBLEM"))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        Set<String> activities = profile.getActivities()
+                .entrySet().stream()
+                .filter(e -> e.getValue().getAction().contains("AUTHOR"))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        profileCustomRepository.removeKeysFromActivity(activities);
+        profileCustomRepository.removeActivitiesByProblemIds(allProblemsComments);
+    }
+
     @Override
     public void run(String... args) throws Exception {
         if (!profileRepository.existsByRolesContaining(Roles.ADMINISTRATOR.name())) {
             String password = BCrypt.hashpw("admin", BCrypt.gensalt());
             String email = EmailEncryptionConfiguration.encryptAndEncodeUserId("adminemail@mail.com");
-            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<>(), new Location(), password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashMap<>(), 0.);
+            Profile adminProfile = new Profile("admin", email, EducationLevel.OTHER, new HashSet<>(), new Location(),
+                    password, Set.of(Roles.ADMINISTRATOR, Roles.MODERATOR, Roles.USER), "", new Stats(), new HashMap<>(), 0.);
             profileRepository.save(adminProfile);
         }
     }
