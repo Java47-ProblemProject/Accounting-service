@@ -15,24 +15,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfiguration {
     private final JwtRequestFilter jwtRequestFilter;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
         http.httpBasic(Customizer.withDefaults());
-        http.csrf(AbstractHttpConfigurer::disable);
+        http.csrf(AbstractHttpConfigurer::disable)
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(new CustomAuthenticationEntryPoint()));
         http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/user/registration", "/user/resetpassword/*", "/user/geteducation")
                 .permitAll()
                 //User section//
                 .requestMatchers(HttpMethod.PUT, "/user/editname/{userId}")
                 .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
-                .requestMatchers(HttpMethod.PUT, "/user/editeducation/{userId}/**")
+                .requestMatchers(HttpMethod.PUT, "/user/editeducation/{userId}/*")
                 .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editscientificinterests/{userId}")
                 .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editlocation/{userId}")
                 .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
-                .requestMatchers(HttpMethod.PUT, "/user/editavatar/{userId}/**")
+                .requestMatchers(HttpMethod.PUT, "/user/editavatar/{userId}/*")
                 .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
                 .requestMatchers(HttpMethod.PUT, "/user/editpassword/{userId}")
                 .access(new WebExpressionAuthorizationManager("#userId == authentication.name"))
@@ -41,13 +43,15 @@ public class SecurityConfiguration {
 
                 //Administrative section//
                 .requestMatchers(HttpMethod.PUT, "/user/editrole/{userId}/*")
-                .access(new WebExpressionAuthorizationManager("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
+                .access(new WebExpressionAuthorizationManager("hasAuthority(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
                 .requestMatchers(HttpMethod.DELETE, "/user/deleteuser/{userId}/*")
-                .access(new WebExpressionAuthorizationManager("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
+                .access(new WebExpressionAuthorizationManager("hasAuthority(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
                 .requestMatchers(HttpMethod.DELETE, "/user/deleteavatar/{userId}/*")
-                .access(new WebExpressionAuthorizationManager("hasRole(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
+                .access(new WebExpressionAuthorizationManager("hasAuthority(T(telran.accounting.model.Roles).ADMINISTRATOR) and #userId == authentication.name"))
                 .anyRequest()
                 .authenticated()
+
+
         );
         return http.build();
     }

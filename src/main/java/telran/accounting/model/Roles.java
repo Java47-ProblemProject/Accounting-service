@@ -19,4 +19,12 @@ public enum Roles {
         }
         return ERoles;
     }
+
+    public static Set<String> convertToDto(Set<Roles> roles) {
+        Set<String> roleStrings = new HashSet<>();
+        for (Roles role : roles) {
+            roleStrings.add(role.name());
+        }
+        return roleStrings;
+    }
 }

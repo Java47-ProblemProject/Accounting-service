@@ -21,18 +21,11 @@ public class ProfileCustomRepository {
 
     @Transactional
     public void removeKeysFromActivity(Set<String> activityIds) {
-        Query query = new Query();
-        Update update = new Update();
-        activityIds.forEach(activityId -> update.unset("activities." + activityId));
-        mongoTemplate.updateMulti(query, update, Profile.class);
-    }
-
-    @Transactional
-    public void removeActivitiesByProblemIds(Set<String> problemIdsToRemove) {
-        Query query = new Query(Criteria.where("activities").exists(true));
-        mongoTemplate.find(query, Profile.class).forEach(profile -> {
-            profile.getActivities().entrySet().removeIf(entry -> problemIdsToRemove.contains(entry.getValue().getProblemId()));
-            mongoTemplate.save(profile);
-        });
+        if (!activityIds.isEmpty()) {
+            Query query = new Query();
+            Update update = new Update();
+            activityIds.forEach(e -> update.unset("activities." + e));
+            mongoTemplate.updateMulti(query, update, Profile.class);
+        }
     }
 }

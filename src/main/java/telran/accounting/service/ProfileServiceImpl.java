@@ -41,23 +41,23 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         String encryptedEmail;
         try {
             encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(newProfile.getEmail());
-            if (profileRepository.existsById(encryptedEmail)) {
-                throw new ProfileExistsException();
-            }
-            Profile profile = modelMapper.map(newProfile, Profile.class);
-            EducationLevel education = Arrays.stream(EducationLevel.values())
-                    .filter(e -> e.name().equalsIgnoreCase(newProfile.getEducationLevel().replace("_", " ")))
-                    .findFirst()
-                    .orElse(EducationLevel.OTHER);
-            profile.setEducationLevel(education);
-            profile.calculateRating();
-            profile.setPassword(passwordEncoder.encode(profile.getPassword()));
-            profile.setEmail(encryptedEmail);
-            profileRepository.save(profile);
-            return modelMapper.map(profile, ProfileDto.class);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to add profile", e);
+            throw new RuntimeException();
         }
+        if (profileRepository.existsById(encryptedEmail)) {
+            throw new ProfileExistsException();
+        }
+        Profile profile = modelMapper.map(newProfile, Profile.class);
+        EducationLevel education = Arrays.stream(EducationLevel.values())
+                .filter(e -> e.name().equalsIgnoreCase(newProfile.getEducationLevel().replace("_", " ")))
+                .findFirst()
+                .orElse(EducationLevel.OTHER);
+        profile.setEducationLevel(education);
+        profile.calculateRating();
+        profile.setPassword(passwordEncoder.encode(profile.getPassword()));
+        profile.setEmail(encryptedEmail);
+        profileRepository.save(profile);
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     @Override
@@ -183,11 +183,11 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional
     public ProfileDto deleteUser(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
-        profileRepository.deleteById(profileId);
         ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
         profileDto.setUsername("DELETED_PROFILE");
         kafkaProducer.setProfile(profileDto);
         removeAllAuthorsActivities(profile);
+        profileRepository.deleteById(profileId);
         return profileDto;
     }
 
@@ -209,11 +209,11 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile adminProfile = findProfileOrThrowError(profileId);
         Profile targetProfile = findProfileOrThrowError(targetId);
         if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
-            profileRepository.deleteById(targetId);
             ProfileDto profileDto = modelMapper.map(targetProfile, ProfileDto.class);
             profileDto.setUsername("DELETED_PROFILE");
             kafkaProducer.setProfile(profileDto);
             removeAllAuthorsActivities(targetProfile);
+            profileRepository.deleteById(targetId);
             return profileDto;
         } else throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete that user");
     }
@@ -246,18 +246,14 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     }
 
     private void removeAllAuthorsActivities(Profile profile) {
-        Set<String> allProblemsComments = profile.getActivities()
-                .entrySet().stream()
-                .filter(e -> e.getValue().getAction().contains("AUTHOR") && e.getValue().getType().equals("PROBLEM"))
+        Set<String> profileAuthoredActivities = profile.getActivities()
+                .entrySet()
+                .stream()
+                .filter(e -> e.getValue().getAction().contains("AUTHOR")
+                        && (e.getValue().getType().equals("PROBLEM") || e.getValue().getType().equals("COMMENT") || e.getValue().getType().equals("SOLUTION")))
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
-        Set<String> activities = profile.getActivities()
-                .entrySet().stream()
-                .filter(e -> e.getValue().getAction().contains("AUTHOR"))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toSet());
-        profileCustomRepository.removeKeysFromActivity(activities);
-        profileCustomRepository.removeActivitiesByProblemIds(allProblemsComments);
+        profileCustomRepository.removeKeysFromActivity(profileAuthoredActivities);
     }
 
     @Override
