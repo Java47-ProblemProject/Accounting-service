@@ -1,8 +1,6 @@
 package telran.accounting.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import telran.accounting.dto.*;
 import telran.accounting.model.EducationLevel;
@@ -18,7 +16,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
-//@CrossOrigin(origins = "http://127.0.0.1:5173", allowedHeaders = "*")
+@CrossOrigin(origins = "http://127.0.0.1:5173", allowedHeaders = "*")
 public class ProfileController {
     final ProfileService profileService;
 
@@ -32,19 +30,9 @@ public class ProfileController {
         return profileService.logInProfile(principal.getName());
     }
 
-    @PostMapping("/logout")
-    public Boolean logOutProfile() {
-        return profileService.logOutProfile();
-    }
-
     @GetMapping("/getuser/{profileId}")
     public ProfileDto getProfile(@PathVariable String profileId) {
         return profileService.getProfile(profileId);
-    }
-
-    @GetMapping("/getcomunityusers")
-    public Set<ProfileDto> getProfilesByCommunities(@RequestBody Set<String> communities) {
-        return profileService.getProfilesByCommunities(communities);
     }
 
     @GetMapping("/getallusers")
