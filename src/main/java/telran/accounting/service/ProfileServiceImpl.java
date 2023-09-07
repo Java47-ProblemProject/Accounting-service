@@ -14,14 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
-import telran.accounting.kafka.KafkaProducer;
 import telran.accounting.dao.ProfileCustomRepository;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.dto.exceptions.ProfileExistsException;
+import telran.accounting.kafka.KafkaProducer;
 import telran.accounting.model.*;
 import telran.accounting.security.JwtTokenService;
-import telran.accounting.security.UserDetailsServiceImpl;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,7 +35,6 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     private final JavaMailSender javaMailSender;
     private final KafkaProducer kafkaProducer;
     private final JwtTokenService jwtTokenService;
-    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     @Transactional

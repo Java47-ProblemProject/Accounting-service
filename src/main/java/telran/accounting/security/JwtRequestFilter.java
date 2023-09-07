@@ -1,6 +1,5 @@
 package telran.accounting.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +22,6 @@ import telran.accounting.dto.exceptions.ExceptionDto;
 import telran.accounting.model.Profile;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Set;
 import java.util.stream.Collectors;
 
