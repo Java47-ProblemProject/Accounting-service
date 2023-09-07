@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://127.0.0.1:5173", allowedHeaders = "*")
+//@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://127.0.0.1:5173"}, allowedHeaders = "*")
 public class ProfileController {
-    final ProfileService profileService;
+    private final ProfileService profileService;
 
     @PostMapping("/registration")
     public Map<String, String> addProfile(@RequestBody RegisterProfileDto newProfile) {
@@ -50,6 +50,11 @@ public class ProfileController {
     @GetMapping("/getallusers")
     public Set<ProfileDto> getProfiles() {
         return profileService.getProfiles();
+    }
+
+    @GetMapping("/getemail/{profileId}")
+    public ResponseEntity<String> getEmail(@PathVariable String profileId) {
+        return profileService.getEmail(profileId);
     }
 
     @PutMapping("/editname/{profileId}")

@@ -22,7 +22,7 @@ public class CustomExceptionHandler {
     public ResponseEntity<Object> handleNoSuchElementException(NoSuchElementException ex) {
         ExceptionDto exceptionDto = new ExceptionDto(HttpStatus.BAD_REQUEST.value(), "Bad Request");
         exceptionDto.setMessage("Profile with such email doesn't exists.");
-        exceptionDto.setPath("/user/login");
+        exceptionDto.setPath("/user/*");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exceptionDto);
     }
 }

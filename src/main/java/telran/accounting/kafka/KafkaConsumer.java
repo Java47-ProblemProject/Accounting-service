@@ -25,10 +25,10 @@ import java.util.function.Consumer;
 @Configuration
 @RequiredArgsConstructor
 public class KafkaConsumer {
-    final ProfileRepository profileRepository;
-    final ProfileCustomRepository profileCustomRepository;
-    final ModelMapper modelMapper;
-    final KafkaProducer kafkaProducer;
+    private final ProfileRepository profileRepository;
+    private final ProfileCustomRepository profileCustomRepository;
+    private final ModelMapper modelMapper;
+    private final KafkaProducer kafkaProducer;
 
     @Bean
     @Transactional
@@ -45,7 +45,7 @@ public class KafkaConsumer {
                 Profile profile = profileRepository.findById(problemAuthorId).get();
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("AUTHOR", "SUBSCRIPTION"));
                 profileRepository.save(profile);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
             }
             if (methodName.equals(ProblemMethodName.DELETE_PROBLEM)) {
                 Profile profile = removeAllActions(problemAuthorId, problemId);
@@ -54,7 +54,7 @@ public class KafkaConsumer {
                 problemIdWithCommentsSolutions.addAll(comments);
                 problemIdWithCommentsSolutions.addAll(solutions);
                 profileCustomRepository.removeKeysFromActivity(problemIdWithCommentsSolutions);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
             }
             if (methodName.equals(ProblemMethodName.ADD_LIKE)) {
                 editAction(profileId, problemId, problemId, problemRating, "PROBLEM", "LIKE");
@@ -75,7 +75,7 @@ public class KafkaConsumer {
                 if (profile.getActivities().containsKey(problemId) && profile.getActivities().get(problemId).getAction().contains("SUBSCRIPTION")) {
                     profile.removeActivity(problemId, "SUBSCRIPTION");
                     profileRepository.save(profile);
-                    kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                    sendProfile(profile);
                     profile = profileRepository.findById(problemAuthorId).get();
                     profile.getActivities().get(problemId).setRating(problemRating);
                     profile.calculateRating();
@@ -83,7 +83,7 @@ public class KafkaConsumer {
                 } else {
                     profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("SUBSCRIPTION"));
                     profileRepository.save(profile);
-                    kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                    sendProfile(profile);
                     profile = profileRepository.findById(problemAuthorId).get();
                     profile.getActivities().get(problemId).setRating(problemRating);
                     profile.calculateRating();
@@ -94,7 +94,7 @@ public class KafkaConsumer {
                 Profile profile = profileRepository.findById(profileId).get();
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("DONATION", "SUBSCRIPTION"));
                 profileRepository.save(profile);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
                 profile = profileRepository.findById(problemAuthorId).get();
                 profile.getActivities().get(problemId).setRating(problemRating);
                 profile.calculateRating();
@@ -118,7 +118,7 @@ public class KafkaConsumer {
                 profile.getActivities().get(commentId).setProblemId(problemId);
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("SUBSCRIPTION"));
                 profileRepository.save(profile);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
             }
             if (methodName.equals(CommentMethodName.ADD_LIKE)) {
                 editAction(profileId, commentId, problemId, problemRating, "COMMENT", "LIKE");
@@ -128,7 +128,7 @@ public class KafkaConsumer {
             }
             if (methodName.equals(CommentMethodName.DELETE_COMMENT)) {
                 Profile profile = removeAllActions(profileId, problemId);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
                 profileCustomRepository.removeKeysFromActivity(Set.of(commentId));
             }
         };
@@ -149,9 +149,7 @@ public class KafkaConsumer {
                 profile.getActivities().get(solutionId).setProblemId(problemId);
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("SUBSCRIPTION"));
                 profileRepository.save(profile);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
-                profileRepository.save(profile);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
             }
             if (methodName.equals(SolutionMethodName.ADD_LIKE)) {
                 editAction(profileId, solutionId, problemId, problemRating, "SOLUTION", "LIKE");
@@ -161,7 +159,7 @@ public class KafkaConsumer {
             }
             if (methodName.equals(SolutionMethodName.DELETE_SOLUTION)) {
                 Profile profile = removeAllActions(profileId, problemId);
-                kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+                sendProfile(profile);
                 profileCustomRepository.removeKeysFromActivity(Set.of(solutionId));
             }
 
@@ -193,7 +191,10 @@ public class KafkaConsumer {
             }
         }
         profileRepository.save(profile);
-        System.out.println("profile saved - " + profile.toString());
-        kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+        sendProfile(profile);
+    }
+
+    private void sendProfile(Profile profile){
+        kafkaProducer.sendProfileData("", modelMapper.map(profile, ProfileDto.class));
     }
 }

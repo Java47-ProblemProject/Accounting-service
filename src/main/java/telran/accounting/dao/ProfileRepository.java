@@ -9,4 +9,6 @@ import java.util.stream.Stream;
 public interface ProfileRepository extends MongoRepository<Profile, String> {
     boolean existsByRolesContaining(String role);
     Stream<Profile> findAllByCommunitiesContaining(Set<String> communities);
+
+    Stream<Profile> findAllByOrderByStats_RatingDesc();
 }

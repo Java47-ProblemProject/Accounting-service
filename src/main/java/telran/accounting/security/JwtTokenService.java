@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
+import telran.accounting.kafka.KafkaProducer;
 import telran.accounting.model.Profile;
 import telran.accounting.model.Roles;
 
@@ -33,24 +34,22 @@ public class JwtTokenService {
     }
 
     public void generateToken(Profile profile) {
-        Instant now = Instant.now();
         String email = profile.getEmail();
-        if (userTokenCache.containsKey(email)) {
-            String existingToken = userTokenCache.get(email);
-            return;
+        if (!userTokenCache.containsKey(email)) {
+            Instant now = Instant.now();
+            Set<String> roleStrings = profile.getRoles().stream()
+                    .map(Roles::name)
+                    .collect(Collectors.toSet());
+            String token = Jwts.builder()
+                    .setSubject(email)
+                    .claim("roles", roleStrings)
+                    .setIssuer("app")
+                    .setIssuedAt(Date.from(now))
+                    .setExpiration(Date.from(now.plus(JWT_TOKEN_VALIDITY)))
+                    .signWith(jwtSecret)
+                    .compact();
+            userTokenCache.put(email, token);
         }
-        Set<String> roleStrings = profile.getRoles().stream()
-                .map(Roles::name)
-                .collect(Collectors.toSet());
-        String token = Jwts.builder()
-                .setSubject(email)
-                .claim("roles", roleStrings)
-                .setIssuer("app")
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(now.plus(JWT_TOKEN_VALIDITY)))
-                .signWith(jwtSecret)
-                .compact();
-        userTokenCache.put(email, token);
     }
 
     public String extractEmailFromToken(String token) {
@@ -81,11 +80,9 @@ public class JwtTokenService {
             Claims claims = Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token).getBody();
             String email = claims.getSubject();
             String cachedToken = userTokenCache.get(email);
-            // Если токен не найден в кеше или не совпадает с переданным токеном, он считается недействительным
             if (cachedToken == null || !cachedToken.equals(token)) {
                 return false;
             }
-            // Дополнительно проверяем срок действия токена
             return !claims.getExpiration().before(new Date());
         } catch (Exception ex) {
             return false;

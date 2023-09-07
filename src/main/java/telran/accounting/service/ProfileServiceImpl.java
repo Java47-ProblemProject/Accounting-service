@@ -3,7 +3,10 @@ package telran.accounting.service;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,7 +63,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         profileRepository.save(profile);
         jwtTokenService.generateToken(profile);
         String token = jwtTokenService.getCurrentProfileToken(profile.getEmail());
-        kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+        kafkaProducer.sendProfileData(token, modelMapper.map(profile, ProfileDto.class));
         Map<String, String> response = new HashMap<>();
         response.put("token", token);
         return response;
@@ -71,7 +74,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     public Map<String, String> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
         String token = jwtTokenService.getCurrentProfileToken(profileId);
-        kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+        kafkaProducer.sendProfileData(token, modelMapper.map(profile, ProfileDto.class));
         Map<String, String> response = new HashMap<>();
         response.put("token", token);
         return response;
@@ -80,11 +83,10 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Override
     @Transactional(readOnly = true)
     public Boolean logOutProfile() {
-        System.out.println(SecurityContextHolder.getContext().getAuthentication().getName());
         String curProfile = SecurityContextHolder.getContext().getAuthentication().getName();
         jwtTokenService.deleteCurrentProfileToken(curProfile);
         SecurityContextHolder.getContext().setAuthentication(null);
-        kafkaProducer.setProfile(new ProfileDto());
+        kafkaProducer.sendProfileData("", new ProfileDto());
         return true;
     }
 
@@ -92,6 +94,15 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional(readOnly = true)
     public ProfileDto getProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
+        String authProfileEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (authProfileEmail.equals(profileId)) {
+            try {
+                String decryptedEmail = EmailEncryptionConfiguration.decryptAndDecodeUserId(authProfileEmail);
+                profile.setEmail(decryptedEmail);
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+        }
         return modelMapper.map(profile, ProfileDto.class);
     }
 
@@ -105,7 +116,21 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Override
     @Transactional(readOnly = true)
     public Set<ProfileDto> getProfiles() {
-        return profileRepository.findAll().stream().map(e -> modelMapper.map(e, ProfileDto.class)).collect(Collectors.toSet());
+        return profileRepository.findAllByOrderByStats_RatingDesc()
+                .map(p -> modelMapper.map(p, ProfileDto.class))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    @Override
+    public ResponseEntity<String> getEmail(String profileId) {
+        String email = findProfileOrThrowError(profileId).getEmail();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            return new ResponseEntity<>(EmailEncryptionConfiguration.decryptAndDecodeUserId(email), headers, HttpStatus.OK);
+        } catch (Exception e) {
+            throw new RuntimeException();
+        }
     }
 
     @Override
@@ -115,7 +140,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         profile.setUsername(newName.getUsername());
         profileRepository.save(profile);
         ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
-        kafkaProducer.setProfile(profileDto);
+        kafkaProducer.sendProfileData("", modelMapper.map(profileDto, ProfileDto.class));
         return profileDto;
     }
 
@@ -169,7 +194,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
             String hashedPassword = passwordEncoder.encode(newPassword);
             profile.setPassword(hashedPassword);
             profileRepository.save(profile);
-            return true;
+            return logOutProfile();
         } catch (NoSuchElementException e) {
             return false;
         }
@@ -202,7 +227,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
         profileDto.setUsername("DELETED_PROFILE");
-        kafkaProducer.setProfile(profileDto);
+        kafkaProducer.sendProfileData("", modelMapper.map(profileDto, ProfileDto.class));
         removeAllAuthorsActivities(profile);
         profileRepository.deleteById(profileId);
         return profileDto;
@@ -228,7 +253,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
             ProfileDto profileDto = modelMapper.map(targetProfile, ProfileDto.class);
             profileDto.setUsername("DELETED_PROFILE");
-            kafkaProducer.setProfile(profileDto);
+            kafkaProducer.sendProfileData("", modelMapper.map(profileDto, ProfileDto.class));
             removeAllAuthorsActivities(targetProfile);
             profileRepository.deleteById(targetId);
             return profileDto;

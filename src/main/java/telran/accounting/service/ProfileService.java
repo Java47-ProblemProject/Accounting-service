@@ -2,10 +2,7 @@ package telran.accounting.service;
 
 import org.springframework.http.ResponseEntity;
 import telran.accounting.dto.*;
-import telran.accounting.model.EducationLevel;
-import telran.accounting.model.Roles;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +18,8 @@ public interface ProfileService {
     Set<ProfileDto> getProfilesByCommunities(Set<String> communities);
 
     Set<ProfileDto> getProfiles();
+
+    ResponseEntity<String> getEmail(String profileId);
 
     ProfileDto editName(String profileId, NameDto newName);
 

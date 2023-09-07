@@ -51,7 +51,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 customAuthenticationEntryPoint.sendJsonResponse(response, exceptionDto);
                 return;
             }
-
             profile = profileRepository.findById(encryptedEmail).orElse(null);
             if (profile == null) {
                 ExceptionDto exceptionDto = new ExceptionDto(HttpStatus.FORBIDDEN.value(), "Forbidden", request);

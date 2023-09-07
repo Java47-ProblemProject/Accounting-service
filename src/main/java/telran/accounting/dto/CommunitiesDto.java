@@ -6,5 +6,5 @@ import java.util.Set;
 
 @Getter
 public class CommunitiesDto {
-    Set<String> communities;
+    protected Set<String> communities;
 }

@@ -6,5 +6,5 @@ import java.util.Set;
 
 @Getter
 public class RoleDto {
-    Set<String> roles;
+    protected Set<String> roles;
 }
