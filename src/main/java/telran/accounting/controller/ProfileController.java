@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
-//@CrossOrigin(origins = "http://127.0.0.1:5173", allowedHeaders = "*")
+@CrossOrigin(origins = "http://127.0.0.1:5173", allowedHeaders = "*")
 public class ProfileController {
     final ProfileService profileService;
 
