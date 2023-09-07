@@ -1,7 +1,6 @@
 package telran.accounting.configuration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.config.Configuration.AccessLevel;
 import org.modelmapper.convention.MatchingStrategies;
@@ -11,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
+@RequiredArgsConstructor
 public class ServiceConfiguration {
     @Bean
     ModelMapper getModelMapper() {
@@ -23,7 +23,7 @@ public class ServiceConfiguration {
     }
 
     @Bean
-    public PasswordEncoder getPassword() {
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }

@@ -31,7 +31,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class JwtRequestFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
-    final ProfileRepository profileRepository;
+    private final ProfileRepository profileRepository;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain chain) throws ServletException, IOException {
@@ -41,28 +42,29 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             return;
         }
         String token = header.substring(7);
-        if (!jwtTokenService.validateToken(token)) {
-            ExceptionDto exceptionDto = new ExceptionDto(HttpStatus.UNAUTHORIZED.value(), "Unauthorized", request);
-            exceptionDto.setMessage("Authentication failed. Please provide a valid authentication token.");
-            sendJsonResponse(response, exceptionDto);
-            return;
-        }
-
-        String email = jwtTokenService.extractEmailFromToken(token);
         String encryptedEmail;
         Profile profile;
         try {
+            String email = jwtTokenService.extractEmailFromToken(token);
             encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(email);
+            if (!jwtTokenService.validateToken(token)) {
+                ExceptionDto exceptionDto = new ExceptionDto(HttpStatus.UNAUTHORIZED.value(), "Unauthorized", request);
+                exceptionDto.setMessage("Authentication failed. Please provide a valid authentication token.");
+                customAuthenticationEntryPoint.sendJsonResponse(response, exceptionDto);
+                return;
+            }
+
             profile = profileRepository.findById(encryptedEmail).orElse(null);
             if (profile == null) {
                 ExceptionDto exceptionDto = new ExceptionDto(HttpStatus.FORBIDDEN.value(), "Forbidden", request);
                 exceptionDto.setMessage("Access to this resource is forbidden for your current role or permissions.");
-                sendJsonResponse(response, exceptionDto);
+                customAuthenticationEntryPoint.sendJsonResponse(response, exceptionDto);
                 return;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
 
         Set<String> roleStrings = jwtTokenService.extractRolesFromToken(token);
         Set<SimpleGrantedAuthority> authorities = roleStrings.stream()
@@ -74,17 +76,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         chain.doFilter(request, response);
-    }
-
-    private void sendJsonResponse(@NotNull HttpServletResponse response, ExceptionDto exceptionDto) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String exceptionDtoJson = objectMapper.writeValueAsString(exceptionDto);
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        PrintWriter writer = response.getWriter();
-        writer.write(exceptionDtoJson);
-        writer.flush();
-        writer.close();
     }
 }
 

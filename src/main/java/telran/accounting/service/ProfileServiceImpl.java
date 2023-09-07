@@ -6,6 +6,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,13 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
-import telran.accounting.configuration.KafkaProducer;
+import telran.accounting.kafka.KafkaProducer;
 import telran.accounting.dao.ProfileCustomRepository;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
-import telran.accounting.model.*;
 import telran.accounting.dto.exceptions.ProfileExistsException;
+import telran.accounting.model.*;
 import telran.accounting.security.JwtTokenService;
+import telran.accounting.security.UserDetailsServiceImpl;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,17 +29,18 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
-    final ProfileRepository profileRepository;
-    final ProfileCustomRepository profileCustomRepository;
-    final ModelMapper modelMapper;
-    final PasswordEncoder passwordEncoder;
-    final JavaMailSender javaMailSender;
-    final KafkaProducer kafkaProducer;
-    final JwtTokenService jwtTokenService;
+    private final ProfileRepository profileRepository;
+    private final ProfileCustomRepository profileCustomRepository;
+    private final ModelMapper modelMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender javaMailSender;
+    private final KafkaProducer kafkaProducer;
+    private final JwtTokenService jwtTokenService;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     @Transactional
-    public ProfileDto addProfile(RegisterProfileDto newProfile) {
+    public Map<String, String> addProfile(RegisterProfileDto newProfile) {
         String encryptedEmail;
         try {
             encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(newProfile.getEmail());
@@ -57,18 +60,34 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         profile.setPassword(passwordEncoder.encode(profile.getPassword()));
         profile.setEmail(encryptedEmail);
         profileRepository.save(profile);
-        return modelMapper.map(profile, ProfileDto.class);
+        jwtTokenService.generateToken(profile);
+        String token = jwtTokenService.getCurrentProfileToken(profile.getEmail());
+        kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
+        Map<String, String> response = new HashMap<>();
+        response.put("token", token);
+        return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, ProfileDto> logInProfile(String profileId) {
+    public Map<String, String> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
         String token = jwtTokenService.getCurrentProfileToken(profileId);
         kafkaProducer.setProfile(modelMapper.map(profile, ProfileDto.class));
-        HashMap<String, ProfileDto> response = new HashMap<>();
-        response.put(token, modelMapper.map(profile, ProfileDto.class));
+        Map<String, String> response = new HashMap<>();
+        response.put("token", token);
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Boolean logOutProfile() {
+        System.out.println(SecurityContextHolder.getContext().getAuthentication().getName());
+        String curProfile = SecurityContextHolder.getContext().getAuthentication().getName();
+        jwtTokenService.deleteCurrentProfileToken(curProfile);
+        SecurityContextHolder.getContext().setAuthentication(null);
+        kafkaProducer.setProfile(new ProfileDto());
+        return true;
     }
 
     @Override

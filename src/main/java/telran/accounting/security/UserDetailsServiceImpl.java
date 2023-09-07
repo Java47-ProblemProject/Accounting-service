@@ -15,7 +15,6 @@ import telran.accounting.model.Profile;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {

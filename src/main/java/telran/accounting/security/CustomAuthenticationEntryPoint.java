@@ -26,7 +26,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         sendJsonResponse(response, exceptionDto);
     }
 
-    private void sendJsonResponse(@NotNull HttpServletResponse response, ExceptionDto exceptionDto) throws IOException {
+    public void sendJsonResponse(@NotNull HttpServletResponse response, ExceptionDto exceptionDto) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         String exceptionDtoJson = objectMapper.writeValueAsString(exceptionDto);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

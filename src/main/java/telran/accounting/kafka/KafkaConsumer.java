@@ -1,4 +1,4 @@
-package telran.accounting.configuration;
+package telran.accounting.kafka;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 import telran.accounting.dao.ProfileCustomRepository;
 import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.ProfileDto;
-import telran.accounting.dto.kafkaDataDto.commentDataDto.CommentMethodName;
-import telran.accounting.dto.kafkaDataDto.commentDataDto.CommentServiceDataDto;
-import telran.accounting.dto.kafkaDataDto.problemDataDto.ProblemMethodName;
-import telran.accounting.dto.kafkaDataDto.problemDataDto.ProblemServiceDataDto;
-import telran.accounting.dto.kafkaDataDto.solutionDataDto.SolutionMethodName;
-import telran.accounting.dto.kafkaDataDto.solutionDataDto.SolutionServiceDataDto;
+import telran.accounting.kafka.kafkaDataDto.commentDataDto.CommentMethodName;
+import telran.accounting.kafka.kafkaDataDto.commentDataDto.CommentServiceDataDto;
+import telran.accounting.kafka.kafkaDataDto.problemDataDto.ProblemMethodName;
+import telran.accounting.kafka.kafkaDataDto.problemDataDto.ProblemServiceDataDto;
+import telran.accounting.kafka.kafkaDataDto.solutionDataDto.SolutionMethodName;
+import telran.accounting.kafka.kafkaDataDto.solutionDataDto.SolutionServiceDataDto;
 import telran.accounting.model.Profile;
 
 import java.util.HashSet;

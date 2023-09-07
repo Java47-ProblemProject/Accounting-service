@@ -4,8 +4,6 @@ import io.jsonwebtoken.*;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import telran.accounting.configuration.EmailEncryptionConfiguration;
 import telran.accounting.model.Profile;
@@ -22,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class JwtTokenService {
-    private static final Duration JWT_TOKEN_VALIDITY = Duration.ofMinutes(240);
+    private static final Duration JWT_TOKEN_VALIDITY = Duration.ofHours(6);
     @Value("${jwt.secret-key}")
     private String jwtSecretKey;
     private SecretKey jwtSecret;
@@ -38,7 +36,7 @@ public class JwtTokenService {
         Instant now = Instant.now();
         String email = profile.getEmail();
         if (userTokenCache.containsKey(email)) {
-            userTokenCache.get(email);
+            String existingToken = userTokenCache.get(email);
             return;
         }
         Set<String> roleStrings = profile.getRoles().stream()
@@ -60,11 +58,11 @@ public class JwtTokenService {
             Claims claims = Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token).getBody();
             String encryptedEmail = claims.getSubject();
             if (claims.getExpiration().before(new Date())) {
-                return null;
+                return "";
             }
             return EmailEncryptionConfiguration.decryptAndDecodeUserId(encryptedEmail);
         } catch (Exception ex) {
-            return null;
+            return "";
         }
     }
 
@@ -80,8 +78,15 @@ public class JwtTokenService {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token);
-            return true;
+            Claims claims = Jwts.parserBuilder().setSigningKey(jwtSecret).build().parseClaimsJws(token).getBody();
+            String email = claims.getSubject();
+            String cachedToken = userTokenCache.get(email);
+            // Если токен не найден в кеше или не совпадает с переданным токеном, он считается недействительным
+            if (cachedToken == null || !cachedToken.equals(token)) {
+                return false;
+            }
+            // Дополнительно проверяем срок действия токена
+            return !claims.getExpiration().before(new Date());
         } catch (Exception ex) {
             return false;
         }
@@ -89,6 +94,10 @@ public class JwtTokenService {
 
     public String getCurrentProfileToken(String profileId) {
         return this.userTokenCache.get(profileId);
+    }
+
+    public void deleteCurrentProfileToken(String profileId) {
+        this.userTokenCache.remove(profileId);
     }
 }
 

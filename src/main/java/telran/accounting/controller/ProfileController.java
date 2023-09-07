@@ -1,6 +1,8 @@
 package telran.accounting.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import telran.accounting.dto.*;
 import telran.accounting.model.EducationLevel;
@@ -16,18 +18,23 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://127.0.0.1:5173/", allowedHeaders = "*")
+//@CrossOrigin(origins = "http://127.0.0.1:5173", allowedHeaders = "*")
 public class ProfileController {
     final ProfileService profileService;
 
     @PostMapping("/registration")
-    public ProfileDto addProfile(@RequestBody RegisterProfileDto newProfile) {
+    public Map<String, String> addProfile(@RequestBody RegisterProfileDto newProfile) {
         return profileService.addProfile(newProfile);
     }
 
     @PostMapping("/login")
-    public Map<String, ProfileDto> login(Principal principal) {
+    public Map<String, String> login(Principal principal) {
         return profileService.logInProfile(principal.getName());
+    }
+
+    @PostMapping("/logout")
+    public Boolean logOutProfile() {
+        return profileService.logOutProfile();
     }
 
     @GetMapping("/getuser/{profileId}")

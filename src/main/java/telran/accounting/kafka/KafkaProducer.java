@@ -1,4 +1,4 @@
-package telran.accounting.configuration;
+package telran.accounting.kafka;
 
 import lombok.RequiredArgsConstructor;
 

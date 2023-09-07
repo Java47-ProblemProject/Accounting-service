@@ -2,7 +2,7 @@
 FROM eclipse-temurin:17-jre-alpine
 
 # Устанавливаем рабочую директорию внутри контейнера
-WORKDIR /rivstas/accounting
+WORKDIR /rivstas/
 
 # Копируем собранный JAR-файл внутрь контейнера
 COPY ./target/JAN-Accounting-0.0.1-SNAPSHOT.jar ./accounting-service.jar
@@ -16,4 +16,4 @@ ENV KAFKA_KEY='ssppshpm'
 ENV MOGODB_URI='mongodb+srv://RivS:TelranJava47@cluster0.ffhoqje.mongodb.net/telran?retryWrites=true&w=majority'
 
 # Запускаем Java-приложение при старте контейнера
-CMD ["java", "-jar", "/rivstas/accounting/accounting-service.jar", "--server.port=8080", "--server.address=0.0.0.0"]
+CMD ["java", "-jar", "/rivstas/accounting-service.jar", "--server.port=8080", "--server.address=0.0.0.0"]

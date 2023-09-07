@@ -1,17 +1,21 @@
 package telran.accounting.service;
 
+import org.springframework.http.ResponseEntity;
 import telran.accounting.dto.*;
 import telran.accounting.model.EducationLevel;
 import telran.accounting.model.Roles;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public interface ProfileService {
-    ProfileDto addProfile(RegisterProfileDto newProfile);
+    Map<String, String> addProfile(RegisterProfileDto newProfile);
 
-    Map<String, ProfileDto> logInProfile(String profileId);
+    Map<String, String> logInProfile(String profileId);
+
+    Boolean logOutProfile();
 
     ProfileDto getProfile(String profileId);
     Set<ProfileDto> getProfilesByCommunities(Set<String> communities);
