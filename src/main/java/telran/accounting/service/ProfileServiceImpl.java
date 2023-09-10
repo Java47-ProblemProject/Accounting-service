@@ -120,16 +120,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional(readOnly = true)
     public ProfileDto getProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
-        String authProfileEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        if (authProfileEmail.equals(profileId)) {
-            try {
-                String decryptedEmail = EmailEncryptionConfiguration.decryptAndDecodeUserId(authProfileEmail);
-                profile.setEmail(decryptedEmail);
-            } catch (Exception e) {
-                throw new RuntimeException();
-            }
-        }
-        return modelMapper.map(profile, ProfileDto.class);
+        return checkIfAuthorAndSetEmail(profileId, profile);
     }
 
     /**
@@ -192,9 +183,8 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         profile.setUsername(newName.getUsername());
         profileRepository.save(profile);
-        ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
         transferData(profile, "", ProfileMethodName.EDIT_PROFILE_NAME);
-        return profileDto;
+        return checkIfAuthorAndSetEmail(profileId, profile);
     }
 
     /**
@@ -218,7 +208,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         }
         transferData(profile, "", ProfileMethodName.EDIT_PROFILE_EDUCATION);
         profileRepository.save(profile);
-        return modelMapper.map(profile, ProfileDto.class);
+        return checkIfAuthorAndSetEmail(profileId, profile);
     }
 
     /**
@@ -235,8 +225,9 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         profile.editCommunities(newCommunities.getCommunities());
         profileRepository.save(profile);
         transferData(profile, "", ProfileMethodName.EDIT_PROFILE_COMMUNITIES);
-        return modelMapper.map(profile, ProfileDto.class);
+        return checkIfAuthorAndSetEmail(profileId, profile);
     }
+
 
     /**
      * Edits the location of a user profile.
@@ -251,7 +242,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         profile.setLocation(modelMapper.map(newLocation, Location.class));
         profileRepository.save(profile);
-        return modelMapper.map(profile, ProfileDto.class);
+        return checkIfAuthorAndSetEmail(profileId, profile);
     }
 
     /**
@@ -267,7 +258,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         Profile profile = findProfileOrThrowError(profileId);
         profile.setAvatar(newAvatar);
         profileRepository.save(profile);
-        return modelMapper.map(profile, ProfileDto.class);
+        return checkIfAuthorAndSetEmail(profileId, profile);
     }
 
     /**
@@ -402,6 +393,30 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
      */
     private Profile findProfileOrThrowError(String profileId) {
         return profileRepository.findById(profileId).orElseThrow(NoSuchElementException::new);
+    }
+
+    /**
+     * Checks if the authenticated profile is the same as the target profile by comparing their email addresses.
+     * If they match, it decrypts the authenticated profile's email address and sets it in the target profile.
+     * This method is used to ensure that the email address of the profile making the request is correctly associated
+     * with the profile data.
+     *
+     * @param profileId The identifier of the target profile.
+     * @param profile   The target profile.
+     * @return A ProfileDto containing the profile data, with the email address updated if the authenticated profile matches.
+     * @throws RuntimeException If an error occurs during email decryption.
+     */
+    private ProfileDto checkIfAuthorAndSetEmail(String profileId, Profile profile) {
+        String authProfileEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (authProfileEmail.equals(profileId)) {
+            try {
+                String decryptedEmail = EmailEncryptionConfiguration.decryptAndDecodeUserId(authProfileEmail);
+                profile.setEmail(decryptedEmail);
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+        }
+        return modelMapper.map(profile, ProfileDto.class);
     }
 
     /**
