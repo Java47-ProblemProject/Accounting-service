@@ -283,31 +283,38 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     }
 
     /**
-     * Resets the password for a user account and sends the new password to the user's email address.
+     * Sends a password reset email to the user's email address with a link to reset their password.
      *
      * @param emailAddress The email address associated with the user account.
-     * @return `true` if the password reset was successful; otherwise, an exception is thrown.
+     * @return `true` if the password reset email was sent successfully; otherwise, an exception is thrown.
      * @throws RuntimeException If there is an error in resetting the password or sending the email.
      */
     @Override
+    @Transactional
     public Boolean resetPassword(String emailAddress) {
         String encryptedEmail;
         try {
             encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(emailAddress);
+            Profile profile = findProfileOrThrowError(encryptedEmail);
+            jwtTokenService.generateToken(profile);
+            String token = jwtTokenService.getCurrentProfileToken(encryptedEmail);
+            transferData(profile, token, ProfileMethodName.SET_PROFILE);
+            String baseUrl = "http://127.0.0.1:5173/restorepassword/";
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(emailAddress);
+            message.setSubject("JAN new password");
+            String resetPasswordMessage = String.format("Dear %s,\n\n" +
+                    "To reset your password, please click on the following link:\n\n" +
+                    "[Password Reset Link](%s%s)\n\n" +
+                    "Please make sure to reset your password once you log in for the first time.\n\n" +
+                    "Best regards,\n" +
+                    "JAN-Application Team", profile.getUsername(), baseUrl, token);
+            message.setText(resetPasswordMessage);
+            javaMailSender.send(message);
+            return true;
         } catch (Exception e) {
             throw new RuntimeException();
         }
-        Profile profile = findProfileOrThrowError(encryptedEmail);
-        String newPassword = new Base64StringKeyGenerator().generateKey();
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(emailAddress);
-        message.setSubject("JAN new password");
-        message.setText("Your new password is:\n\n" + newPassword + "\n\nPlease remember to change it once you log in for the first time.");
-        javaMailSender.send(message);
-        newPassword = passwordEncoder.encode(newPassword);
-        profile.setPassword(newPassword);
-        profileRepository.save(profile);
-        return true;
     }
 
     /**
