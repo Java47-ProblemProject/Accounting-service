@@ -8,11 +8,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.annotation.Transactional;
 import telran.accounting.dao.ProfileCustomRepository;
 import telran.accounting.dao.ProfileRepository;
-import telran.accounting.dto.ProfileDto;
 import telran.accounting.kafka.kafkaDataDto.commentDataDto.CommentMethodName;
 import telran.accounting.kafka.kafkaDataDto.commentDataDto.CommentServiceDataDto;
 import telran.accounting.kafka.kafkaDataDto.problemDataDto.ProblemMethodName;
 import telran.accounting.kafka.kafkaDataDto.problemDataDto.ProblemServiceDataDto;
+import telran.accounting.kafka.kafkaDataDto.profileDataDto.ProfileDataDto;
+import telran.accounting.kafka.kafkaDataDto.profileDataDto.ProfileMethodName;
 import telran.accounting.kafka.kafkaDataDto.solutionDataDto.SolutionMethodName;
 import telran.accounting.kafka.kafkaDataDto.solutionDataDto.SolutionServiceDataDto;
 import telran.accounting.model.Profile;
@@ -195,6 +196,6 @@ public class KafkaConsumer {
     }
 
     private void sendProfile(Profile profile){
-        kafkaProducer.sendProfileData("", modelMapper.map(profile, ProfileDto.class));
+        kafkaProducer.setProfile(new ProfileDataDto(profile.getUsername(), profile.getEmail(), profile.getStats().getRating(), profile.getCommunities(), profile.getActivities(), ProfileMethodName.UPDATED_PROFILE));
     }
 }

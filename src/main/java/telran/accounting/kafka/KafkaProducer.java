@@ -4,32 +4,25 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import telran.accounting.dto.ProfileDto;
+import telran.accounting.kafka.kafkaDataDto.profileDataDto.ProfileDataDto;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
 
 @Configuration
 @RequiredArgsConstructor
 public class KafkaProducer {
-    private Map<String, ProfileDto> profileData;
+    @Setter
+    private ProfileDataDto profile;
 
     @Bean
-    public Supplier<Map<String, ProfileDto>> sendProfile() {
+    public Supplier<ProfileDataDto> sendProfile() {
         return () -> {
-            if (profileData != null) {
-                Map<String, ProfileDto> sentMessage = profileData;
-                this.profileData = null;
+            if (profile != null) {
+                ProfileDataDto sentMessage = profile;
+                this.profile = null;
                 return sentMessage;
             }
             return null;
         };
     }
-
-    public void sendProfileData(String token, ProfileDto profile){
-        this.profileData = new HashMap<>();
-        this.profileData.put(token, profile);
-    }
-
 }

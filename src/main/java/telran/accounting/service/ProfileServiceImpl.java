@@ -1,6 +1,7 @@
 package telran.accounting.service;
 
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +23,8 @@ import telran.accounting.dao.ProfileRepository;
 import telran.accounting.dto.*;
 import telran.accounting.dto.exceptions.ProfileExistsException;
 import telran.accounting.kafka.KafkaProducer;
+import telran.accounting.kafka.kafkaDataDto.profileDataDto.ProfileDataDto;
+import telran.accounting.kafka.kafkaDataDto.profileDataDto.ProfileMethodName;
 import telran.accounting.model.*;
 import telran.accounting.security.JwtTokenService;
 
@@ -39,6 +42,14 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     private final KafkaProducer kafkaProducer;
     private final JwtTokenService jwtTokenService;
 
+    /**
+     * Adds a new user profile to the system and generates a JWT token for authentication.
+     *
+     * @param newProfile A RegisterProfileDto containing the information of the new profile to be added.
+     * @return A map containing the generated JWT token with the key "token."
+     * @throws RuntimeException       If there is an error in encrypting the email or generating the token.
+     * @throws ProfileExistsException If a profile with the same email already exists.
+     */
     @Override
     @Transactional
     public Map<String, String> addProfile(RegisterProfileDto newProfile) {
@@ -52,44 +63,59 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
             throw new ProfileExistsException();
         }
         Profile profile = modelMapper.map(newProfile, Profile.class);
-        EducationLevel education = Arrays.stream(EducationLevel.values())
-                .filter(e -> e.name().equalsIgnoreCase(newProfile.getEducationLevel().replace("_", " ")))
-                .findFirst()
-                .orElse(EducationLevel.OTHER);
-        profile.setEducationLevel(education);
+        profile.setEducationLevel(
+                Arrays.stream(EducationLevel.values())
+                        .filter(e -> e.name().equalsIgnoreCase(newProfile.getEducationLevel().replace(" ", "_")))
+                        .findFirst()
+                        .orElse(EducationLevel.OTHER)
+        );
         profile.calculateRating();
         profile.setPassword(passwordEncoder.encode(profile.getPassword()));
         profile.setEmail(encryptedEmail);
         profileRepository.save(profile);
         jwtTokenService.generateToken(profile);
         String token = jwtTokenService.getCurrentProfileToken(profile.getEmail());
-        kafkaProducer.sendProfileData(token, modelMapper.map(profile, ProfileDto.class));
-        Map<String, String> response = new HashMap<>();
-        response.put("token", token);
-        return response;
+        transferData(profile, token, ProfileMethodName.SET_PROFILE);
+        return Collections.singletonMap("token", token);
     }
 
+    /**
+     * Logs in a user profile and generates a JWT token for authentication.
+     *
+     * @param profileId The unique identifier of the user's profile to log in.
+     * @return A map containing the generated JWT token with the key "token."
+     */
     @Override
     @Transactional(readOnly = true)
     public Map<String, String> logInProfile(String profileId) {
         Profile profile = findProfileOrThrowError(profileId);
         String token = jwtTokenService.getCurrentProfileToken(profileId);
-        kafkaProducer.sendProfileData(token, modelMapper.map(profile, ProfileDto.class));
-        Map<String, String> response = new HashMap<>();
-        response.put("token", token);
-        return response;
+        transferData(profile, token, ProfileMethodName.SET_PROFILE);
+        return Collections.singletonMap("token", token);
     }
 
+    /**
+     * Logs out the currently authenticated user profile by deleting the associated JWT token and clearing the authentication context.
+     *
+     * @return `true` if the logout is successful.
+     */
     @Override
     @Transactional(readOnly = true)
     public Boolean logOutProfile() {
         String curProfile = SecurityContextHolder.getContext().getAuthentication().getName();
         jwtTokenService.deleteCurrentProfileToken(curProfile);
         SecurityContextHolder.getContext().setAuthentication(null);
-        kafkaProducer.sendProfileData("", new ProfileDto());
+        transferData(new Profile(), "", ProfileMethodName.UNSET_PROFILE);
         return true;
     }
 
+    /**
+     * Retrieves a user profile by its unique identifier and optionally decrypts the email address for the authenticated profile.
+     *
+     * @param profileId The unique identifier of the user's profile to retrieve.
+     * @return A ProfileDto representing the user's profile with an optionally decrypted email address.
+     * @throws RuntimeException If there is an error in decrypting the email address.
+     */
     @Override
     @Transactional(readOnly = true)
     public ProfileDto getProfile(String profileId) {
@@ -106,13 +132,25 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    /**
+     * Retrieves a set of user profiles based on the specified communities.
+     *
+     * @param communities The set of communities to filter profiles by.
+     * @return A set of ProfileDto representing user profiles matching the specified communities.
+     */
     @Override
+    @Transactional(readOnly = true)
     public Set<ProfileDto> getProfilesByCommunities(Set<String> communities) {
         return profileRepository.findAllByCommunitiesContaining(communities)
                 .map(p -> modelMapper.map(p, ProfileDto.class))
                 .collect(Collectors.toSet());
     }
 
+    /**
+     * Retrieves a set of user profiles ordered by descending rating.
+     *
+     * @return A set of ProfileDto representing user profiles, ordered by rating.
+     */
     @Override
     @Transactional(readOnly = true)
     public Set<ProfileDto> getProfiles() {
@@ -121,7 +159,15 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    /**
+     * Retrieves the email address of a user profile after decrypting and decoding it.
+     *
+     * @param profileId The unique identifier of the user's profile.
+     * @return A ResponseEntity containing the decrypted and decoded email address, or an error response if decryption fails.
+     * @throws RuntimeException If there is an error in decrypting or decoding the email address.
+     */
     @Override
+    @Transactional(readOnly = true)
     public ResponseEntity<String> getEmail(String profileId) {
         String email = findProfileOrThrowError(profileId).getEmail();
         try {
@@ -133,6 +179,13 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         }
     }
 
+    /**
+     * Edits the username of a user profile.
+     *
+     * @param profileId The unique identifier of the user's profile.
+     * @param newName   A NameDto containing the new username to set for the user.
+     * @return A ProfileDto representing the user's profile after the username edit.
+     */
     @Override
     @Transactional
     public ProfileDto editName(String profileId, NameDto newName) {
@@ -140,34 +193,58 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         profile.setUsername(newName.getUsername());
         profileRepository.save(profile);
         ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
-        kafkaProducer.sendProfileData("", modelMapper.map(profileDto, ProfileDto.class));
+        transferData(profile, "", ProfileMethodName.EDIT_PROFILE_NAME);
         return profileDto;
     }
 
+    /**
+     * Edits the education level of a user profile.
+     *
+     * @param profileId    The unique identifier of the user's profile.
+     * @param newEducation The new education level to set for the user.
+     * @return A ProfileDto representing the user's profile after the education level edit.
+     */
     @Override
     @Transactional
     public ProfileDto editEducation(String profileId, String newEducation) {
         Profile profile = findProfileOrThrowError(profileId);
-        if (Arrays.stream(EducationLevel.values()).noneMatch(e -> e.toString().equalsIgnoreCase(newEducation))) {
+        String educationLevel = newEducation.toUpperCase().replace(" ", "_");
+        if (Arrays.stream(EducationLevel.values()).noneMatch(e -> e.toString().equalsIgnoreCase(educationLevel))) {
             profile.setEducationLevel(EducationLevel.OTHER);
             profile.calculateRating();
         } else {
-            profile.setEducationLevel(EducationLevel.valueOf(newEducation.toUpperCase()));
+            profile.setEducationLevel(EducationLevel.valueOf(educationLevel));
             profile.calculateRating();
         }
+        transferData(profile, "", ProfileMethodName.EDIT_PROFILE_EDUCATION);
         profileRepository.save(profile);
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    /**
+     * Edits the list of communities associated with a user profile.
+     *
+     * @param profileId      The unique identifier of the user's profile.
+     * @param newCommunities A CommunitiesDto containing the updated list of communities.
+     * @return A ProfileDto representing the user's profile after the communities edit.
+     */
     @Override
     @Transactional
     public ProfileDto editCommunities(String profileId, CommunitiesDto newCommunities) {
         Profile profile = findProfileOrThrowError(profileId);
         profile.editCommunities(newCommunities.getCommunities());
         profileRepository.save(profile);
+        transferData(profile, "", ProfileMethodName.EDIT_PROFILE_COMMUNITIES);
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    /**
+     * Edits the location of a user profile.
+     *
+     * @param profileId   The unique identifier of the user's profile.
+     * @param newLocation The new Location data to set for the user.
+     * @return A ProfileDto representing the user's profile after the location edit.
+     */
     @Override
     @Transactional
     public ProfileDto editLocation(String profileId, LocationDto newLocation) {
@@ -177,6 +254,13 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    /**
+     * Edits the avatar of a user profile.
+     *
+     * @param profileId The unique identifier of the user's profile.
+     * @param newAvatar The new avatar image URL or data to set for the user.
+     * @return A ProfileDto representing the user's profile after the avatar edit.
+     */
     @Override
     @Transactional
     public ProfileDto editAvatar(String profileId, String newAvatar) {
@@ -186,6 +270,13 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    /**
+     * Edits the password of a user profile.
+     *
+     * @param profileId   The unique identifier of the user's profile.
+     * @param newPassword The new password to set for the user.
+     * @return `true` if the password is successfully edited and the user is logged out; `false` if the profile with the given ID is not found.
+     */
     @Override
     @Transactional
     public Boolean editPassword(String profileId, String newPassword) {
@@ -200,6 +291,13 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         }
     }
 
+    /**
+     * Resets the password for a user account and sends the new password to the user's email address.
+     *
+     * @param emailAddress The email address associated with the user account.
+     * @return `true` if the password reset was successful; otherwise, an exception is thrown.
+     * @throws RuntimeException If there is an error in resetting the password or sending the email.
+     */
     @Override
     public Boolean resetPassword(String emailAddress) {
         String encryptedEmail;
@@ -221,57 +319,69 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
         return true;
     }
 
+    /**
+     * Deletes a user profile by an owner.
+     *
+     * @param profileId The unique identifier of the administrator's profile.
+     * @return A ProfileDto representing the deleted user's profile with the username set to "DELETED_PROFILE".
+     */
     @Override
     @Transactional
     public ProfileDto deleteUser(String profileId) {
-        Profile profile = findProfileOrThrowError(profileId);
-        ProfileDto profileDto = modelMapper.map(profile, ProfileDto.class);
-        profileDto.setUsername("DELETED_PROFILE");
-        kafkaProducer.sendProfileData("", modelMapper.map(profileDto, ProfileDto.class));
-        removeAllAuthorsActivities(profile);
-        profileRepository.deleteById(profileId);
-        return profileDto;
+        return getDeletedProfileDto(profileId);
     }
 
     //Administrative methods//
+
+    /**
+     * Edits the roles of a user profile by an administrator.
+     *
+     * @param profileId The unique identifier of the administrator's profile.
+     * @param targetId  The unique identifier of the user's profile whose roles are to be edited.
+     * @param role      A RoleDto containing the new roles for the user.
+     * @return A ProfileDto representing the user's profile after the role edit.
+     */
     @Override
     @Transactional
     public ProfileDto editRole(String profileId, String targetId, RoleDto role) {
-        Profile adminProfile = findProfileOrThrowError(profileId);
         Profile profile = findProfileOrThrowError(targetId);
-        if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
-            profile.setRoles(Roles.convertFromDto(role.getRoles()));
-            profileRepository.save(profile);
-        }
+        profile.setRoles(Roles.convertFromDto(role.getRoles()));
+        profileRepository.save(profile);
         return modelMapper.map(profile, ProfileDto.class);
     }
 
+    /**
+     * Deletes a user profile by an administrator.
+     *
+     * @param profileId The unique identifier of the administrator's profile.
+     * @param targetId  The unique identifier of the user's profile to be deleted.
+     * @return A ProfileDto representing the deleted user's profile with the username set to "DELETED_PROFILE".
+     */
     @Override
     public ProfileDto deleteUser(String profileId, String targetId) {
-        Profile adminProfile = findProfileOrThrowError(profileId);
-        Profile targetProfile = findProfileOrThrowError(targetId);
-        if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
-            ProfileDto profileDto = modelMapper.map(targetProfile, ProfileDto.class);
-            profileDto.setUsername("DELETED_PROFILE");
-            kafkaProducer.sendProfileData("", modelMapper.map(profileDto, ProfileDto.class));
-            removeAllAuthorsActivities(targetProfile);
-            profileRepository.deleteById(targetId);
-            return profileDto;
-        } else throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete that user");
+        return getDeletedProfileDto(targetId);
     }
 
+    /**
+     * Deletes the avatar of a user profile by an administrator.
+     *
+     * @param targetId The unique identifier of the target user's profile whose avatar is to be deleted.
+     * @return A ProfileDto representing the target user's profile after the avatar deletion.
+     * @throws HttpClientErrorException If the administrator does not have permission to delete the user's avatar (FORBIDDEN status).
+     */
     @Override
     public ProfileDto deleteAvatar(String profileId, String targetId) {
-        Profile adminProfile = findProfileOrThrowError(profileId);
         Profile targetProfile = findProfileOrThrowError(targetId);
-        if (adminProfile.getRoles().contains(Roles.ADMINISTRATOR)) {
-            targetProfile.setAvatar("");
-            profileRepository.save(targetProfile);
-            return modelMapper.map(targetProfile, ProfileDto.class);
-        } else
-            throw new HttpClientErrorException(HttpStatus.FORBIDDEN, "You have no permissions to delete users avatar");
+        targetProfile.setAvatar("");
+        profileRepository.save(targetProfile);
+        return modelMapper.map(targetProfile, ProfileDto.class);
     }
 
+    /**
+     * Retrieves a list of education levels as strings.
+     *
+     * @return A list of education levels, where each level is formatted as a user-friendly string.
+     */
     @Override
     public List<String> getEducationList() {
         return Arrays.stream(EducationLevel.values())
@@ -283,10 +393,53 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Finds a profile by its unique identifier or throws a NoSuchElementException if not found.
+     *
+     * @param profileId The unique identifier of the profile to find.
+     * @return The found profile.
+     * @throws NoSuchElementException If the profile with the given ID does not exist.
+     */
     private Profile findProfileOrThrowError(String profileId) {
         return profileRepository.findById(profileId).orElseThrow(NoSuchElementException::new);
     }
 
+    /**
+     * Generates a ProfileDto representation for a deleted user profile, performs necessary cleanup,
+     * and deletes the profile record from the repository.
+     *
+     * @param targetId The unique identifier of the deleted user's profile.
+     * @return A ProfileDto representing the deleted user's profile with the username set to "DELETED_PROFILE".
+     */
+    @NotNull
+    private ProfileDto getDeletedProfileDto(String targetId) {
+        Profile targetProfile = findProfileOrThrowError(targetId);
+        ProfileDto profileDto = modelMapper.map(targetProfile, ProfileDto.class);
+        profileDto.setUsername("DELETED_PROFILE");
+        transferData(targetProfile, "", ProfileMethodName.DELETE_PROFILE);
+        removeAllAuthorsActivities(targetProfile);
+        profileRepository.deleteById(targetId);
+        return profileDto;
+    }
+
+    /**
+     * Transfers data related to a profile and a JWT token(only for sign up/sign in methods) to a Kafka producer.
+     *
+     * @param profile    The profile for which data is being transferred.
+     * @param token      The JWT token (may be empty).
+     * @param methodName The name of the method triggering the transfer.
+     */
+    private void transferData(Profile profile, String token, ProfileMethodName methodName) {
+        ProfileDataDto profileData = token.isEmpty() ? new ProfileDataDto(profile.getUsername(), profile.getEmail(), profile.getStats().getRating(), profile.getCommunities(), profile.getActivities(), methodName)
+                : new ProfileDataDto(token, profile.getUsername(), profile.getEmail(), profile.getStats().getRating(), profile.getCommunities(), profile.getActivities(), methodName);
+        kafkaProducer.setProfile(profileData);
+    }
+
+    /**
+     * Removes all activities authored by the profile.
+     *
+     * @param profile The profile for which authored activities are being removed.
+     */
     private void removeAllAuthorsActivities(Profile profile) {
         Set<String> profileAuthoredActivities = profile.getActivities()
                 .entrySet()
