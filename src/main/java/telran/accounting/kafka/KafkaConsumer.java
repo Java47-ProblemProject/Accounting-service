@@ -47,8 +47,7 @@ public class KafkaConsumer {
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("AUTHOR", "SUBSCRIPTION"));
                 profileRepository.save(profile);
                 sendProfile(profile);
-            }
-            if (methodName.equals(ProblemMethodName.DELETE_PROBLEM)) {
+            } else if (methodName.equals(ProblemMethodName.DELETE_PROBLEM)) {
                 Profile profile = removeAllActions(problemAuthorId, problemId);
                 Set<String> problemIdWithCommentsSolutions = new HashSet<>();
                 problemIdWithCommentsSolutions.add(problemId);
@@ -56,22 +55,19 @@ public class KafkaConsumer {
                 problemIdWithCommentsSolutions.addAll(solutions);
                 profileCustomRepository.removeKeysFromActivity(problemIdWithCommentsSolutions);
                 sendProfile(profile);
-            }
-            if (methodName.equals(ProblemMethodName.ADD_LIKE)) {
+            } else if (methodName.equals(ProblemMethodName.ADD_LIKE)) {
                 editAction(profileId, problemId, problemId, problemRating, "PROBLEM", "LIKE");
                 Profile profile = profileRepository.findById(problemAuthorId).get();
                 profile.getActivities().get(problemId).setRating(problemRating);
                 profile.calculateRating();
                 profileRepository.save(profile);
-            }
-            if (methodName.equals(ProblemMethodName.ADD_DISLIKE)) {
+            } else if (methodName.equals(ProblemMethodName.ADD_DISLIKE)) {
                 editAction(profileId, problemId, problemId, problemRating, "PROBLEM", "DISLIKE");
                 Profile profile = profileRepository.findById(problemAuthorId).get();
                 profile.getActivities().get(problemId).setRating(problemRating);
                 profile.calculateRating();
                 profileRepository.save(profile);
-            }
-            if (methodName.equals(ProblemMethodName.SUBSCRIBE)) {
+            } else if (methodName.equals(ProblemMethodName.SUBSCRIBE)) {
                 Profile profile = profileRepository.findById(profileId).get();
                 if (profile.getActivities().containsKey(problemId) && profile.getActivities().get(problemId).getAction().contains("SUBSCRIPTION")) {
                     profile.removeActivity(problemId, "SUBSCRIPTION");
@@ -90,8 +86,7 @@ public class KafkaConsumer {
                     profile.calculateRating();
                     profileRepository.save(profile);
                 }
-            }
-            if (methodName.equals(ProblemMethodName.DONATE)) {
+            } else if (methodName.equals(ProblemMethodName.DONATE)) {
                 Profile profile = profileRepository.findById(profileId).get();
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("DONATION", "SUBSCRIPTION"));
                 profileRepository.save(profile);
@@ -120,14 +115,11 @@ public class KafkaConsumer {
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("SUBSCRIPTION"));
                 profileRepository.save(profile);
                 sendProfile(profile);
-            }
-            if (methodName.equals(CommentMethodName.ADD_LIKE)) {
+            } else if (methodName.equals(CommentMethodName.ADD_LIKE)) {
                 editAction(profileId, commentId, problemId, problemRating, "COMMENT", "LIKE");
-            }
-            if (methodName.equals(CommentMethodName.ADD_DISLIKE)) {
+            } else if (methodName.equals(CommentMethodName.ADD_DISLIKE)) {
                 editAction(profileId, commentId, problemId, problemRating, "COMMENT", "DISLIKE");
-            }
-            if (methodName.equals(CommentMethodName.DELETE_COMMENT)) {
+            } else if (methodName.equals(CommentMethodName.DELETE_COMMENT)) {
                 Profile profile = removeAllActions(profileId, problemId);
                 sendProfile(profile);
                 profileCustomRepository.removeKeysFromActivity(Set.of(commentId));
@@ -151,14 +143,12 @@ public class KafkaConsumer {
                 profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("SUBSCRIPTION"));
                 profileRepository.save(profile);
                 sendProfile(profile);
-            }
-            if (methodName.equals(SolutionMethodName.ADD_LIKE)) {
+            } else if (methodName.equals(SolutionMethodName.ADD_LIKE)) {
                 editAction(profileId, solutionId, problemId, problemRating, "SOLUTION", "LIKE");
             }
             if (methodName.equals(SolutionMethodName.ADD_DISLIKE)) {
                 editAction(profileId, solutionId, problemId, problemRating, "SOLUTION", "DISLIKE");
-            }
-            if (methodName.equals(SolutionMethodName.DELETE_SOLUTION)) {
+            } else if (methodName.equals(SolutionMethodName.DELETE_SOLUTION)) {
                 Profile profile = removeAllActions(profileId, problemId);
                 sendProfile(profile);
                 profileCustomRepository.removeKeysFromActivity(Set.of(solutionId));
@@ -184,18 +174,18 @@ public class KafkaConsumer {
         } else {
             profile.addActivity(entityId, problemRating, type, Set.of(action));
             profile.addActivity(problemId, problemRating, "PROBLEM", Set.of("SUBSCRIPTION"));
-            if (action.equals("LIKE")){
-                profile.removeActivity(entityId,  "DISLIKE");
+            if (action.equals("LIKE")) {
+                profile.removeActivity(entityId, "DISLIKE");
             }
-            if (action.equals("DISLIKE")){
-                profile.removeActivity(entityId,  "LIKE");
+            if (action.equals("DISLIKE")) {
+                profile.removeActivity(entityId, "LIKE");
             }
         }
         profileRepository.save(profile);
         sendProfile(profile);
     }
 
-    private void sendProfile(Profile profile){
+    private void sendProfile(Profile profile) {
         kafkaProducer.setProfile(new ProfileDataDto(profile.getUsername(), profile.getEmail(), profile.getStats().getRating(), profile.getCommunities(), profile.getActivities(), ProfileMethodName.UPDATED_PROFILE));
     }
 }

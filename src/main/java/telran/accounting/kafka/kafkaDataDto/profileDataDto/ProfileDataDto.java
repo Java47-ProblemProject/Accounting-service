@@ -1,12 +1,14 @@
 package telran.accounting.kafka.kafkaDataDto.profileDataDto;
 
 import lombok.Getter;
+import lombok.ToString;
 import telran.accounting.model.Activity;
 
 import java.util.Map;
 import java.util.Set;
 
 @Getter
+@ToString
 public class ProfileDataDto {
     private String token;
     private final String userName;

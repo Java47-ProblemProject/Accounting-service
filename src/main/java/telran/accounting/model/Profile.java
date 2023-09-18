@@ -54,26 +54,32 @@ public class Profile {
     public void addActivity(String id, Double problemRating, String entityType, Set<String> actions) {
         if (!this.activities.containsKey(id)) {
             this.activities.put(id, new Activity(entityType, problemRating));
-            calculateRating();
             if (entityType.equals("PROBLEM") && actions.contains("AUTHOR")) {
                 this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() + 1);
-                calculateRating();
+            } else if (entityType.equals("SOLUTION") && (actions.contains("LIKE") || actions.contains("DISLIKE"))) {
+                if (actions.contains("LIKE")) {
+                    this.stats.setFormulatedProblems(this.stats.getCheckedSolutions() + 1);
+                } else if (actions.contains("DISLIKE")) {
+                    this.stats.setFormulatedProblems(this.stats.getCheckedSolutions() - 1);
+                }
             }
         }
         this.activities.get(id).action.addAll(actions);
         calculateRating();
-
     }
 
     public void removeActivity(String id, String action) {
-        this.activities.get(id).action.remove(action);
-        if (this.activities.get(id).action.contains("PROBLEM") && action.equals("AUTHOR")) {
+        Activity activity = this.activities.get(id);
+        activity.getAction().remove(action);
+        if (activity.getType().equals("PROBLEM") && action.equals("AUTHOR")) {
             this.stats.setFormulatedProblems(this.stats.getFormulatedProblems() - 1);
-            calculateRating();
+        } else if (activity.getType().equals("SOLUTION") && (action.contains("LIKE") || action.contains("DISLIKE"))) {
+            this.stats.setCheckedSolutions(this.stats.getCheckedSolutions() - 1);
         }
-        if (this.activities.get(id).getAction().isEmpty()) {
+        if (activity.getAction().isEmpty()) {
             this.activities.remove(id);
         }
+        calculateRating();
     }
 
     public void editCommunities(Set<String> newCommunities) {
@@ -84,11 +90,11 @@ public class Profile {
         double solvedProblems = 0.5 * this.stats.getSolvedProblems();
         double checkedSolutions = 0.3 * this.stats.getCheckedSolutions();
         double formulatedProblemsWeight = this.getActivities().values().stream()
-                .filter(e -> e.type.equals("PROBLEM") && e.action.contains("AUTHOR"))
+                .filter(a -> a.getType().equals("PROBLEM") && a.getAction().contains("AUTHOR"))
                 .mapToDouble(Activity::getRating)
                 .sum();
-        double formulatedProblems = 0.1 * (this.stats.getFormulatedProblems() + formulatedProblemsWeight);
-        double rating = solvedProblems + checkedSolutions + formulatedProblems;
+        double formulatedProblems = 0.1 * this.stats.getFormulatedProblems();
+        double rating = solvedProblems + checkedSolutions + formulatedProblemsWeight + formulatedProblems;
         this.stats.setRating(Double.parseDouble(String.format("%.2f", switch (this.educationLevel) {
             case PRESCHOOL -> 10 + rating;
             case PRIMARY -> 12 + rating;

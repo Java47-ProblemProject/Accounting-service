@@ -19,6 +19,6 @@ public class ProfileDto {
     protected Set<String> roles;
     protected String avatar;
     protected StatsDto stats;
-    protected Map<String, ActivityDto> activities;
+    //protected Map<String, ActivityDto> activities;
     protected Double wallet;
 }
