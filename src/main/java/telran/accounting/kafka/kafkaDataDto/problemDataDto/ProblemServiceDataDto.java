@@ -1,6 +1,7 @@
 package telran.accounting.kafka.kafkaDataDto.problemDataDto;
 
 import lombok.Getter;
+import lombok.ToString;
 
 import java.util.Set;
 

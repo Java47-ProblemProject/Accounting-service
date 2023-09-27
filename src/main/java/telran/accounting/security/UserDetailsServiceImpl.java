@@ -25,7 +25,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         String encryptedEmail = EmailEncryptionConfiguration.encryptAndEncodeUserId(email);
-        Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(()-> new UsernameNotFoundException(encryptedEmail));
+        Profile profile = profileRepository.findById(encryptedEmail).orElseThrow(() -> new UsernameNotFoundException(encryptedEmail));
         Set<SimpleGrantedAuthority> authorities = profile.getRoles().stream()
                 .map(Enum::name)
                 .map(SimpleGrantedAuthority::new)

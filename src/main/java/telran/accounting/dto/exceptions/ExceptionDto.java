@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 @Getter
 public class ExceptionDto {
@@ -19,14 +21,16 @@ public class ExceptionDto {
     private String path;
 
     public ExceptionDto(int status, String error, HttpServletRequest request) {
-        this.timestamp = LocalDateTime.now().toString();
+        ZoneId jerusalemZone = ZoneId.of("Asia/Jerusalem");
+        this.timestamp = LocalDateTime.now(ZoneOffset.UTC).atZone(jerusalemZone).toString();
         this.status = status;
         this.error = error;
         this.message = "";
         this.path = request.getRequestURI();
     }
     public ExceptionDto(int status, String error) {
-        this.timestamp = LocalDateTime.now().toString();
+        ZoneId jerusalemZone = ZoneId.of("Asia/Jerusalem");
+        this.timestamp = LocalDateTime.now(ZoneOffset.UTC).atZone(jerusalemZone).toString();
         this.status = status;
         this.error = error;
         this.message = "";

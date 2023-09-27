@@ -49,6 +49,8 @@ public class JwtTokenService {
                     .signWith(jwtSecret)
                     .compact();
             userTokenCache.put(email, token);
+            System.out.println("Current token -> " + token);
+            userTokenCache.values().forEach(System.out::println);
         }
     }
 

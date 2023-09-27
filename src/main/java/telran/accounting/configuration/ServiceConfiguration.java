@@ -13,6 +13,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 @Configuration
 @RequiredArgsConstructor
 public class ServiceConfiguration {
@@ -25,7 +28,6 @@ public class ServiceConfiguration {
                 .setMatchingStrategy(MatchingStrategies.STRICT);
         return modelMapper;
     }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

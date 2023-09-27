@@ -102,9 +102,10 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     @Transactional(readOnly = true)
     public Boolean logOutProfile() {
         String curProfile = SecurityContextHolder.getContext().getAuthentication().getName();
+        Profile profile = findProfileOrThrowError(curProfile);
         jwtTokenService.deleteCurrentProfileToken(curProfile);
         SecurityContextHolder.getContext().setAuthentication(null);
-        transferData(new Profile(), "", ProfileMethodName.UNSET_PROFILE);
+        transferData(profile, "", ProfileMethodName.UNSET_PROFILE);
         return true;
     }
 
@@ -133,7 +134,7 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
     public Set<ProfileDto> getProfilesByCommunities(Set<String> communities) {
         return profileRepository.findAllByCommunitiesContaining(communities)
                 .map(p -> modelMapper.map(p, ProfileDto.class))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     /**
