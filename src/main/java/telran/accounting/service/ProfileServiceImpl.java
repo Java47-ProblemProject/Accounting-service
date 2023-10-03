@@ -303,12 +303,19 @@ public class ProfileServiceImpl implements ProfileService, CommandLineRunner {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(emailAddress);
             message.setSubject("JAN new password");
-            String resetPasswordMessage = String.format("Dear %s,\n\n" +
-                    "To reset your password, please click on the following link:\n\n" +
-                    "[Password Reset Link](%s%s)\n\n" +
-                    "Please make sure to reset your password once you log in for the first time.\n\n" +
-                    "Best regards,\n" +
-                    "JAN-Application Team", profile.getUsername(), baseUrl, token);
+            String resetPasswordMessage = String.format("""
+                    Dear %s,
+
+                    To reset your password, please click on the following link:
+
+                    [Password Reset Link](%s%s)
+
+                    Please make sure to reset your password once you log in for the first time.
+
+                    Best regards,
+                    JAN-Application Team
+                    """,
+                    profile.getUsername(), baseUrl, token);
             message.setText(resetPasswordMessage);
             javaMailSender.send(message);
             return true;
